@@ -39,10 +39,24 @@ export default function AuthCallbackPage() {
       }
     }
 
-    function completeLogin(session) {
+    async function completeLogin(session) {
       const user = session.user;
       const savedRole = localStorage.getItem("resq_oauth_role") || "citizen";
       const role = user?.user_metadata?.role || savedRole;
+
+      // Sync user profile to backend database
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"}/api/auth/sync`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ role })
+        });
+      } catch (err) {
+        console.error("Failed to sync profile during OAuth callback:", err);
+      }
 
       // Persist session just like email/password login does
       localStorage.setItem("resq_token", session.access_token);

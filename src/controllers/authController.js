@@ -117,4 +117,31 @@ async function logout(req, res) {
   }
 }
 
-module.exports = { signup, login, logout };
+async function oauthSync(req, res) {
+  try {
+    const supabase = getServiceClient();
+    const role = req.user?.user_metadata?.role || req.body?.role || 'citizen';
+    const email = req.user?.email || 'unknown@domain.com';
+    const full_name = req.user?.user_metadata?.full_name || req.user?.user_metadata?.name || null;
+
+    // Upsert into public.users to fulfill foreign key constraints
+    const { error } = await supabase.from('users').upsert({
+      id: req.user.id,
+      email: email,
+      full_name: full_name,
+      role: role
+    }, { onConflict: 'id' });
+
+    if (error) {
+      console.error('oauthSync DB error', error);
+      return res.status(500).json({ success: false, error: 'Failed to sync user profile' });
+    }
+
+    return res.json({ success: true, data: { synced: true, role } });
+  } catch (e) {
+    console.error('oauthSync', e);
+    return res.status(500).json({ success: false, error: 'Failed during profile sync' });
+  }
+}
+
+module.exports = { signup, login, logout, oauthSync };

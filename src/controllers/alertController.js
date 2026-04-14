@@ -47,7 +47,7 @@ async function createAlert(req, res) {
 
     if (insErr || !inserted) {
       console.error('createAlert insert', insErr);
-      return res.status(500).json({ success: false, error: 'Failed to create alert' });
+      return res.status(500).json({ success: false, error: insErr?.message || 'Failed to create alert' });
     }
 
     await runTriage(inserted.id, inserted.message, inserted.type, inserted.latitude, inserted.longitude);
@@ -73,7 +73,7 @@ async function createAlert(req, res) {
     return res.status(201).json({ success: true, data: payload });
   } catch (e) {
     console.error('createAlert', e);
-    return res.status(500).json({ success: false, error: 'Failed to create alert' });
+    return res.status(500).json({ success: false, error: e.message || 'Failed to create alert' });
   }
 }
 

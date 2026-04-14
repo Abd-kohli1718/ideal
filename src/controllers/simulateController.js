@@ -48,7 +48,7 @@ async function createAndTriage(req, { type, message }) {
 
   if (insErr || !inserted) {
     console.error('simulate insert', insErr);
-    throw new Error('Failed to create simulated alert');
+    throw new Error(insErr?.message || 'Failed to create simulated alert');
   }
 
   await runTriage(inserted.id, inserted.message, inserted.type, inserted.latitude, inserted.longitude);
@@ -151,7 +151,7 @@ async function simulateSocial(req, res) {
     });
   } catch (e) {
     console.error('simulateSocial', e);
-    return res.status(500).json({ success: false, error: 'Simulation failed' });
+    return res.status(500).json({ success: false, error: e.message || 'Simulation failed' });
   }
 }
 
@@ -164,7 +164,7 @@ async function simulateSos(req, res) {
     return res.status(201).json({ success: true, data });
   } catch (e) {
     console.error('simulateSos', e);
-    return res.status(500).json({ success: false, error: 'Simulation failed' });
+    return res.status(500).json({ success: false, error: e.message || 'Simulation failed' });
   }
 }
 

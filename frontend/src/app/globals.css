@@ -1178,6 +1178,34 @@ select.input {
   color: #c4bbff;
 }
 
+/* --- Admin Sidenav (Desktop) --- */
+.sidenav {
+  width: 180px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 8px;
+  gap: 8px;
+}
+.sidenav-item {
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.sidenav-item:hover, .sidenav-item.active {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+
 /* ===== RESPONSIVE GRID CLASSES (Desktop defaults) ===== */
 
 /* Citizen page: 2 columns */

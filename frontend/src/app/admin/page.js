@@ -152,11 +152,14 @@ export default function AdminPage() {
           mapStyle={FREE_DARK_MAP_STYLE}
           interactive={false}
         >
-          {activeMapAlerts.map((a) => (
-            <Marker key={a.id} latitude={a.latitude} longitude={a.longitude}>
-              <MapMarker severity={a.triage_result?.severity || a.severity} />
-            </Marker>
-          ))}
+          {activeMapAlerts.map((a) => {
+            if (a.latitude == null || a.longitude == null || isNaN(a.latitude) || isNaN(a.longitude)) return null;
+            return (
+              <Marker key={a.id} latitude={a.latitude} longitude={a.longitude}>
+                <MapMarker severity={a.triage_result?.severity || a.severity} />
+              </Marker>
+            );
+          })}
         </Map>
       </div>
     </div>

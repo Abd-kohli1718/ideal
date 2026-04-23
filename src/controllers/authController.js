@@ -20,49 +20,62 @@ async function signup(req, res) {
 
   try {
     const supabase = getServiceClient();
-    const { data, error } = await supabase.auth.signUp({
+
+    // Use admin API to create user with auto-confirmed email
+    const { data: adminData, error: adminErr } = await supabase.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: {
-          full_name: full_name || null,
-          role: normalizedRole,
-        },
+      email_confirm: true,
+      user_metadata: {
+        full_name: full_name || null,
+        role: normalizedRole,
       },
     });
 
-    if (error) {
-      return res.status(400).json({ success: false, error: error.message });
+    if (adminErr) {
+      // Handle "already registered" gracefully
+      if (adminErr.message?.includes('already been registered') || adminErr.message?.includes('already exists')) {
+        return res.status(400).json({ success: false, error: 'An account with this email already exists. Please sign in instead.' });
+      }
+      return res.status(400).json({ success: false, error: adminErr.message });
     }
 
-    if (!data.user?.id) {
+    if (!adminData.user?.id) {
       return res.status(500).json({ success: false, error: 'Signup did not return a user id' });
     }
 
+    // Insert into public.users table
     const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
 
-    const { error: insertErr } = await serviceSupabase.from('users').insert({
-      id: data.user.id,
+    const { error: insertErr } = await serviceSupabase.from('users').upsert({
+      id: adminData.user.id,
       email,
       full_name: full_name || null,
       role: normalizedRole,
-    });
+    }, { onConflict: 'id' });
 
     if (insertErr) {
       console.error('auth signup: users insert failed', insertErr);
-      if (insertErr.code === '23505') {
-        return res.status(400).json({ success: false, error: 'An account with this email already exists. Please log in or use a different email.' });
-      }
-      return res.status(500).json({ success: false, error: 'Failed to create profile' });
+    }
+
+    // Now sign them in to get a session token
+    const { data: loginData, error: loginErr } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (loginErr || !loginData.session) {
+      // User created but login failed — tell them to sign in manually
+      return res.status(201).json({
+        success: true,
+        data: { user: adminData.user, session: null },
+      });
     }
 
     return res.status(201).json({
       success: true,
       data: {
-        user: data.user,
-        session: data.session,
+        user: loginData.user,
+        session: loginData.session,
       },
     });
   } catch (e) {

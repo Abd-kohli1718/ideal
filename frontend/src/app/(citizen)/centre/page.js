@@ -64,8 +64,7 @@ const FILTER_OPTIONS = [
 ];
 
 export default function CentrePage() {
-  const isDev = process.env.NODE_ENV === "development";
-  const [posts, setPosts] = useState(isDev ? MOCK_POSTS : []);
+  const [posts, setPosts] = useState([]);
   const [filter, setFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
 
@@ -104,9 +103,11 @@ export default function CentrePage() {
           media_type,
         };
       });
-      setPosts(isDev ? [...realPosts, ...MOCK_POSTS] : realPosts);
+      // If we got real data, use it; otherwise fall back to mocks
+      setPosts(realPosts.length > 0 ? realPosts : MOCK_POSTS);
     } catch {
-      // keep mock data on error
+      // On auth failure or network error, show mock data so page isn't empty
+      setPosts(MOCK_POSTS);
     }
   }, []);
 

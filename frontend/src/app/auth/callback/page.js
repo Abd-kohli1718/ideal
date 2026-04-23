@@ -70,7 +70,7 @@ export default function AuthCallbackPage() {
       localStorage.removeItem("resq_oauth_role");
 
       setStatus("Success! Redirecting…");
-      router.replace(`/${role}`);
+      router.replace(role === "citizen" ? "/centre" : `/${role}`);
     }
 
     handleCallback();
@@ -95,7 +95,7 @@ export default function AuthCallbackPage() {
             position: "absolute",
             inset: 0,
             border: "2px solid var(--surface2)",
-            borderTopColor: "var(--purple)",
+            borderTopColor: "var(--red)",
             borderRadius: "50%",
             animation: "spin 0.8s linear infinite",
           }} />
@@ -103,7 +103,7 @@ export default function AuthCallbackPage() {
             position: "absolute",
             inset: 4,
             border: "2px solid var(--surface2)",
-            borderBottomColor: "rgba(155, 143, 255, 0.7)",
+            borderBottomColor: "rgba(255, 45, 45, 0.5)",
             borderRadius: "50%",
             animation: "spin 1.2s linear infinite reverse",
           }} />

@@ -35,7 +35,7 @@ def load_models():
     resp_path = os.path.join(MODEL_DIR, "response_classifier.pkl")
 
     if not os.path.exists(sev_path) or not os.path.exists(resp_path):
-        print("❌ Models not found. Train first: python train_text_model.py")
+        print("[ERROR] Models not found. Train first: python train_text_model.py")
         sys.exit(1)
 
     print("Loading severity model...")
@@ -44,7 +44,7 @@ def load_models():
     print("Loading response type model...")
     with open(resp_path, "rb") as f:
         resp_model = pickle.load(f)
-    print("✅ Models loaded successfully")
+    print("[OK] Models loaded successfully")
 
 
 class PredictHandler(BaseHTTPRequestHandler):
@@ -123,7 +123,7 @@ def main():
     load_models()
 
     server = HTTPServer(("0.0.0.0", args.port), PredictHandler)
-    print(f"\n🧠 ResQ ML Inference Server running on port {args.port}")
+    print(f"\n  ResQ ML Inference Server running on port {args.port}")
     print(f"   POST /predict  — classify emergency text")
     print(f"   GET  /health   — health check\n")
 

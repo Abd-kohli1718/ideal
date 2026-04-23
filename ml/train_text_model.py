@@ -41,13 +41,13 @@ from sklearn.calibration import CalibratedClassifierCV
 
 def load_data(csv_path):
     """Load and validate training data."""
-    print(f"\n📂 Loading data from: {csv_path}")
+    print(f"\n[*] Loading data from: {csv_path}")
     df = pd.read_csv(csv_path)
 
     required = ["message", "severity", "response_type"]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        print(f"❌ Missing columns: {missing}")
+        print(f"[ERROR] Missing columns: {missing}")
         sys.exit(1)
 
     df = df.dropna(subset=["message", "severity", "response_type"])
@@ -66,7 +66,7 @@ def build_pipeline(task_name, n_classes):
     svc = CalibratedClassifierCV(LinearSVC(max_iter=5000, class_weight="balanced"))
 
     # Logistic Regression
-    lr = LogisticRegression(max_iter=2000, class_weight="balanced", multi_class="multinomial")
+    lr = LogisticRegression(max_iter=2000, class_weight="balanced")
 
     # Gradient Boosting
     gb = GradientBoostingClassifier(
@@ -110,7 +110,7 @@ def build_pipeline(task_name, n_classes):
 def train_model(df, target_col, model_name, output_dir):
     """Train, evaluate, and save a classifier."""
     print(f"\n{'='*60}")
-    print(f"🧠 Training: {model_name} ({target_col})")
+    print(f"  Training: {model_name} ({target_col})")
     print(f"{'='*60}")
 
     X = df["message"].values
@@ -131,12 +131,12 @@ def train_model(df, target_col, model_name, output_dir):
     start = time.time()
     pipeline.fit(X_train, y_train)
     elapsed = time.time() - start
-    print(f"   ✅ Training complete in {elapsed:.1f}s")
+    print(f"   [OK] Training complete in {elapsed:.1f}s")
 
     # Evaluate
     y_pred = pipeline.predict(X_test)
     accuracy = (y_pred == y_test).mean()
-    print(f"\n   📊 Test Accuracy: {accuracy:.4f} ({accuracy*100:.1f}%)")
+    print(f"\n   Test Accuracy: {accuracy:.4f} ({accuracy*100:.1f}%)")
 
     print(f"\n   Classification Report:")
     report = classification_report(y_test, y_pred, zero_division=0)
@@ -153,7 +153,7 @@ def train_model(df, target_col, model_name, output_dir):
     with open(model_path, "wb") as f:
         pickle.dump(pipeline, f)
     size_mb = os.path.getsize(model_path) / (1024 * 1024)
-    print(f"\n   💾 Saved: {model_path} ({size_mb:.1f} MB)")
+    print(f"\n   Saved: {model_path} ({size_mb:.1f} MB)")
 
     # Save metadata
     meta = {
@@ -177,7 +177,7 @@ def train_model(df, target_col, model_name, output_dir):
 def test_predictions(severity_model, response_model):
     """Run interactive test predictions."""
     print(f"\n{'='*60}")
-    print(f"🔍 Test Predictions")
+    print(f"  Test Predictions")
     print(f"{'='*60}")
 
     test_messages = [
@@ -194,7 +194,7 @@ def test_predictions(severity_model, response_model):
     ]
 
     print(f"\n   {'Message':<55} {'Severity':<10} {'Response':<12} {'Conf'}")
-    print(f"   {'─'*55} {'─'*10} {'─'*12} {'─'*6}")
+    print(f"   {'-'*55} {'-'*10} {'-'*12} {'-'*6}")
 
     for msg in test_messages:
         sev = severity_model.predict([msg])[0]
@@ -217,7 +217,7 @@ def main():
 
     # Generate synthetic data if no CSV exists
     if not os.path.exists(args.data):
-        print("📝 No training data found. Generating synthetic dataset...")
+        print("[*] No training data found. Generating synthetic dataset...")
         from generate_dataset import generate_dataset
         generate_dataset(n_per_class=300, output_path=args.data)
 
@@ -232,13 +232,13 @@ def main():
 
     # Summary
     print(f"\n{'='*60}")
-    print(f"✅ TRAINING COMPLETE")
+    print(f"  TRAINING COMPLETE")
     print(f"{'='*60}")
     print(f"   Severity model:  {sev_acc*100:.1f}% accuracy")
     print(f"   Response model:  {resp_acc*100:.1f}% accuracy")
     print(f"   Models saved to: {args.output}/")
     print(f"\n   To use in production:")
-    print(f"   → python inference_server.py")
+    print(f"   Run: python inference_server.py")
     print(f"{'='*60}\n")
 
 

@@ -191,7 +191,7 @@ def train_image_classifier():
 
     # Build ensemble
     svc = CalibratedClassifierCV(LinearSVC(max_iter=3000, class_weight="balanced"))
-    lr = LogisticRegression(max_iter=2000, class_weight="balanced", multi_class="multinomial")
+    lr = LogisticRegression(max_iter=2000, class_weight="balanced")
     rf = RandomForestClassifier(n_estimators=200, class_weight="balanced", n_jobs=-1)
     gb = GradientBoostingClassifier(n_estimators=150, max_depth=5, learning_rate=0.1)
 

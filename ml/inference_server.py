@@ -31,8 +31,14 @@ resp_model = None
 def load_models():
     global sev_model, resp_model
 
-    sev_path = os.path.join(MODEL_DIR, "severity_classifier.pkl")
-    resp_path = os.path.join(MODEL_DIR, "response_classifier.pkl")
+    sev_path = os.path.join(MODEL_DIR, "severity_model.pkl")
+    resp_path = os.path.join(MODEL_DIR, "response_model.pkl")
+
+    # Fallback to old names
+    if not os.path.exists(sev_path):
+        sev_path = os.path.join(MODEL_DIR, "severity_classifier.pkl")
+    if not os.path.exists(resp_path):
+        resp_path = os.path.join(MODEL_DIR, "response_classifier.pkl")
 
     if not os.path.exists(sev_path) or not os.path.exists(resp_path):
         print("[ERROR] Models not found. Train first: python train_text_model.py")

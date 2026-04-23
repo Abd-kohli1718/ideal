@@ -8,11 +8,13 @@ import Logo from "@/components/Logo";
 
 export default function PortalPage() {
   const router = useRouter();
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState("responder");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mode, setMode] = useState("login");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,25 +23,39 @@ export default function PortalPage() {
     setLoading(true);
 
     try {
-      const res = await apiFetch("/api/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-      const { access_token, refresh_token, user: u } = res.data;
-      // M3: Use actual role from JWT, not the UI selection
-      const actualRole = u?.user_metadata?.role || "citizen";
-      if (actualRole !== role) {
-        setError(`Your account role is "${actualRole}", not "${role}". Please select the correct role.`);
-        setLoading(false);
-        return;
+      if (mode === "signup") {
+        const res = await apiFetch("/api/auth/signup", {
+          method: "POST",
+          body: JSON.stringify({ email, password, full_name: fullName, role }),
+        });
+        const { user: u, session } = res.data;
+        if (session?.access_token) {
+          localStorage.setItem("resq_token", session.access_token);
+          localStorage.setItem("resq_user", JSON.stringify(u));
+          localStorage.setItem("resq_role", role);
+          document.cookie = `resq_role=${role}; path=/; max-age=${60 * 60 * 24 * 7}`;
+          document.cookie = `resq_authed=1; path=/; max-age=${60 * 60 * 24 * 7}`;
+          router.push(`/${role}`);
+        } else {
+          setMode("login");
+          setError(`Account created! Check your email to confirm, then sign in as ${role}.`);
+        }
+      } else {
+        const res = await apiFetch("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+        const { access_token, user: u } = res.data;
+        const assignedRole = u?.user_metadata?.role || role;
+        
+        localStorage.setItem("resq_token", access_token);
+        localStorage.setItem("resq_user", JSON.stringify(u));
+        localStorage.setItem("resq_role", assignedRole);
+        document.cookie = `resq_role=${assignedRole}; path=/; max-age=${60 * 60 * 24 * 7}`;
+        document.cookie = `resq_authed=1; path=/; max-age=${60 * 60 * 24 * 7}`;
+        
+        router.push(`/${assignedRole}`);
       }
-      localStorage.setItem("resq_token", access_token);
-      localStorage.setItem("resq_user", JSON.stringify(u));
-      localStorage.setItem("resq_role", actualRole);
-      if (refresh_token) localStorage.setItem("resq_refresh_token", refresh_token);
-      document.cookie = `resq_role=${actualRole}; path=/; max-age=${60 * 60 * 24 * 7}`;
-      document.cookie = `resq_authed=1; path=/; max-age=${60 * 60 * 24 * 7}`;
-      router.push(actualRole === "citizen" ? "/centre" : `/${actualRole}`);
     } catch (err) {
       setError(err.message || "Login failed");
     } finally {
@@ -63,7 +79,12 @@ export default function PortalPage() {
           </p>
         </div>
 
-        <h2 style={{ fontSize: 20, textAlign: "center", marginBottom: 20 }}>Select your role</h2>
+        <h2 style={{ fontSize: 20, textAlign: "center", marginBottom: 6 }}>
+          {mode === "login" ? "Welcome back" : "Create portal account"}
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--muted)", textAlign: "center", marginBottom: 20 }}>
+          {mode === "login" ? "Sign in to access your operations dashboard" : "Register for official access"}
+        </p>
 
         <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
           {[
@@ -91,12 +112,32 @@ export default function PortalPage() {
         )}
 
         <form onSubmit={handleSubmit}>
+          {mode === "signup" && (
+            <input className="input" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} style={{ marginBottom: 12 }} />
+          )}
           <input className="input" type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ marginBottom: 12 }} />
           <input className="input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ marginBottom: 20 }} />
           <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: "100%", padding: "14px 20px", fontSize: 14, borderRadius: 14 }}>
-            {loading ? "Signing in…" : `Sign in as ${role || "..."}`}
+            {loading ? "Processing…" : mode === "login" ? `Sign in as ${role || "..."}` : `Register as ${role || "..."}`}
           </button>
         </form>
+
+        <div style={{ textAlign: "center", marginTop: 14 }}>
+          <button
+            type="button"
+            onClick={() => {
+              setMode(mode === "login" ? "signup" : "login");
+              setError("");
+            }}
+            style={{
+              background: "none", border: "none", color: "var(--muted)",
+              cursor: "pointer", fontFamily: "inherit", fontSize: 12,
+              textDecoration: "underline", textUnderlineOffset: 4,
+            }}
+          >
+            {mode === "login" ? "New staff? Create account" : "Already have an account? Sign in"}
+          </button>
+        </div>
 
         {/* Divider */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0" }}>

@@ -23,30 +23,30 @@ const TEXT_REPORTS = [
   'Landslide blocking Mysore Road after continuous rainfall. Several vehicles stranded. NDRF team requested.',
 ];
 
-// Image-based emergency reports (with Unsplash disaster images)
+// Image-based emergency reports (with picsum.photos - guaranteed working)
 const IMAGE_REPORTS = [
   {
-    message: '[MEDIA:https://images.unsplash.com/photo-1547683905-f686c993aae5?w=600] Massive fire engulfing commercial complex in JP Nagar. Flames visible from kilometers away. Multiple fire tenders dispatched. Evacuations underway.',
+    message: '[MEDIA:https://picsum.photos/id/1058/600/400] Massive fire engulfing commercial complex in JP Nagar. Flames visible from kilometers away. Multiple fire tenders dispatched. Evacuations underway.',
     severity: 'high',
   },
   {
-    message: '[MEDIA:https://images.unsplash.com/photo-1599709800893-23f73ab5a4b0?w=600] Severe waterlogging in Koramangala after 4 hours of continuous rainfall. Water level crossing 3 feet on main road. Multiple vehicles submerged.',
+    message: '[MEDIA:https://picsum.photos/id/274/600/400] Severe waterlogging in Koramangala after 4 hours of continuous rainfall. Water level crossing 3 feet on main road. Multiple vehicles submerged.',
     severity: 'high',
   },
   {
-    message: '[MEDIA:https://images.unsplash.com/photo-1621188998799-db932ff31a67?w=600] Partial building collapse reported near Majestic bus terminal. Debris on roadway. No casualties confirmed yet but rescue teams searching.',
+    message: '[MEDIA:https://picsum.photos/id/1040/600/400] Partial building collapse reported near Majestic bus terminal. Debris on roadway. No casualties confirmed yet but rescue teams searching.',
     severity: 'high',
   },
   {
-    message: '[MEDIA:https://images.unsplash.com/photo-1583946099379-8c1b40b5841f?w=600] Gas leak from pipeline near residential apartments in Indiranagar. Strong chemical odor. Fire department on scene, residents evacuating 3 blocks.',
+    message: '[MEDIA:https://picsum.photos/id/1039/600/400] Gas leak from pipeline near residential apartments in Indiranagar. Strong chemical odor. Fire department on scene, residents evacuating 3 blocks.',
     severity: 'medium',
   },
   {
-    message: '[MEDIA:https://images.unsplash.com/photo-1504701954957-2010ec3bcec1?w=600] Multi-vehicle pile-up on NICE Road during fog. At least 5 cars and 2 trucks involved. Ambulances rushing to scene. Traffic diverted.',
+    message: '[MEDIA:https://picsum.photos/id/1036/600/400] Multi-vehicle pile-up on NICE Road during fog. At least 5 cars and 2 trucks involved. Ambulances rushing to scene. Traffic diverted.',
     severity: 'high',
   },
   {
-    message: '[MEDIA:https://images.unsplash.com/photo-1527482797697-8795b05a13fe?w=600] Heavy storm damage in Whitefield area. Trees uprooted, power lines down across multiple streets. BESCOM teams working to restore power.',
+    message: '[MEDIA:https://picsum.photos/id/1015/600/400] Heavy storm damage in Whitefield area. Trees uprooted, power lines down across multiple streets. BESCOM teams working to restore power.',
     severity: 'medium',
   },
 ];

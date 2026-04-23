@@ -17,6 +17,15 @@ function timeAgo(d) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+function parseMedia(message) {
+  const mediaRegex = /\[MEDIA:(https?:\/\/[^\]]+)\]/g;
+  const urls = [];
+  let match;
+  while ((match = mediaRegex.exec(message)) !== null) urls.push(match[1]);
+  const cleanMsg = message.replace(mediaRegex, "").trim();
+  return { cleanMsg, mediaUrls: urls };
+}
+
 export default function HistoryPage() {
   const { user } = useAuth();
   const [alerts, setAlerts] = useState([]);
@@ -53,6 +62,7 @@ export default function HistoryPage() {
         {alerts.map((a, i) => {
           const sev = a.triage_result?.severity || a.severity || "low";
           const isOpen = selectedId === a.id;
+          const { cleanMsg, mediaUrls } = parseMedia(a.message || "");
           return (
             <motion.div
               key={a.id}
@@ -60,42 +70,77 @@ export default function HistoryPage() {
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.05 }}
-              style={{ padding: 16, cursor: "pointer" }}
+              style={{ padding: 0, cursor: "pointer", overflow: "hidden" }}
               onClick={() => setSelectedId(isOpen ? null : a.id)}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span className={`sev-dot sev-dot-${sev}`} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {a.message}
-                  </div>
-                  <div style={{ display: "flex", gap: 6, marginTop: 4, fontSize: 11, color: "var(--muted)" }}>
-                    <span style={{ textTransform: "capitalize" }}>{(a.type || "").replace(/_/g, " ")}</span>
-                    <span>·</span>
-                    <span>{timeAgo(a.created_at)}</span>
-                  </div>
+              {/* Image preview at top */}
+              {mediaUrls.length > 0 && (
+                <div style={{ position: "relative" }}>
+                  <img
+                    src={mediaUrls[0]}
+                    alt="Report media"
+                    style={{
+                      width: "100%", height: 160, objectFit: "cover",
+                      display: "block",
+                    }}
+                  />
+                  {mediaUrls.length > 1 && (
+                    <span style={{
+                      position: "absolute", bottom: 8, right: 8,
+                      background: "rgba(0,0,0,0.7)", color: "#fff",
+                      padding: "3px 8px", borderRadius: 8, fontSize: 10,
+                      fontWeight: 600,
+                    }}>+{mediaUrls.length - 1} more</span>
+                  )}
                 </div>
-                <div className={`status-pill status-${a.status}`}>{a.status}</div>
-              </div>
+              )}
 
-              {/* Expanded timeline */}
-              <AnimatePresence>
-                {isOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    style={{ overflow: "hidden", marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}
-                  >
-                    <StatusTimeline status={a.status} />
-                    {a.latitude && (
-                      <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>
-                        📍 {Number(a.latitude).toFixed(4)}, {Number(a.longitude).toFixed(4)}
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              <div style={{ padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span className={`sev-dot sev-dot-${sev}`} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {cleanMsg}
+                    </div>
+                    <div style={{ display: "flex", gap: 6, marginTop: 4, fontSize: 11, color: "var(--muted)" }}>
+                      <span style={{ textTransform: "capitalize" }}>{(a.type || "").replace(/_/g, " ")}</span>
+                      <span>·</span>
+                      <span>{timeAgo(a.created_at)}</span>
+                    </div>
+                  </div>
+                  <div className={`status-pill status-${a.status}`}>{a.status}</div>
+                </div>
+
+                {/* Expanded timeline */}
+                <AnimatePresence>
+                  {isOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      style={{ overflow: "hidden", marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border)" }}
+                    >
+                      <StatusTimeline status={a.status} />
+                      {a.latitude && (
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 8 }}>
+                          📍 {Number(a.latitude).toFixed(4)}, {Number(a.longitude).toFixed(4)}
+                        </div>
+                      )}
+                      {/* Show all media images in expanded view */}
+                      {mediaUrls.length > 1 && (
+                        <div style={{ display: "flex", gap: 8, marginTop: 10, overflowX: "auto" }}>
+                          {mediaUrls.map((url, j) => (
+                            <img key={j} src={url} alt={`Media ${j + 1}`} style={{
+                              width: 100, height: 70, objectFit: "cover", borderRadius: 8,
+                              border: "1px solid var(--border)",
+                            }} />
+                          ))}
+                        </div>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </motion.div>
           );
         })}

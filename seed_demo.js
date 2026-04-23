@@ -1,5 +1,5 @@
 /**
- * Seed 5 demo alerts directly using the Supabase service key.
+ * Clear old demo alerts and re-seed with working images.
  * Run: node seed_demo.js
  */
 require('dotenv').config();
@@ -14,7 +14,7 @@ const supabase = createClient(
 const DEMO_ALERTS = [
   {
     type: 'social_post',
-    message: 'Major fire at warehouse in Whitefield industrial area. Multiple fire trucks needed. People trapped on 2nd floor. Thick black smoke visible from 5km away.',
+    message: 'Major fire at warehouse in Whitefield industrial area. Multiple fire trucks needed. People trapped on 2nd floor. Thick black smoke visible from 5km away. Urgent rescue required.',
     latitude: 12.9698,
     longitude: 77.7500,
     severity: 'high',
@@ -23,7 +23,7 @@ const DEMO_ALERTS = [
   },
   {
     type: 'sos_button',
-    message: 'SOS — Severe road accident on Outer Ring Road near Marathahalli bridge. 3 vehicles involved, casualties reported, ambulance urgently needed.',
+    message: 'SOS — Severe multi-vehicle accident on Outer Ring Road near Marathahalli bridge. 3 vehicles involved including a bus, multiple casualties reported, ambulance urgently needed.',
     latitude: 12.9565,
     longitude: 77.7015,
     severity: 'high',
@@ -32,7 +32,7 @@ const DEMO_ALERTS = [
   },
   {
     type: 'social_post',
-    message: '[MEDIA:https://images.unsplash.com/photo-1599709800893-23f73ab5a4b0?w=600] Heavy flooding in Koramangala area after 6 hours of continuous rain. Water level rising above knee height. Several cars submerged. Rescue boats needed.',
+    message: '[MEDIA:https://picsum.photos/id/274/600/400] Heavy flooding in Koramangala area after 6 hours of continuous rain. Water level rising above knee height. Several cars submerged. Rescue boats needed immediately.',
     latitude: 12.9352,
     longitude: 77.6245,
     severity: 'high',
@@ -41,7 +41,7 @@ const DEMO_ALERTS = [
   },
   {
     type: 'social_post',
-    message: '[MEDIA:https://images.unsplash.com/photo-1621188998799-db932ff31a67?w=600] Building wall collapsed near Majestic bus stand after construction work. Debris blocking the main road. Minor injuries reported. Police and rescue team needed.',
+    message: '[MEDIA:https://picsum.photos/id/1040/600/400] Building wall collapsed near Majestic bus stand after construction work. Debris blocking the main road. Minor injuries reported. Police and rescue team needed on site.',
     latitude: 12.9767,
     longitude: 77.5713,
     severity: 'medium',
@@ -50,7 +50,7 @@ const DEMO_ALERTS = [
   },
   {
     type: 'social_post',
-    message: '[MEDIA:https://images.unsplash.com/photo-1583946099379-8c1b40b5841f?w=600] Gas leak detected in apartment complex in Indiranagar. Strong odor spreading to 3 floors. Residents evacuating. Fire department alerted.',
+    message: '[MEDIA:https://picsum.photos/id/1039/600/400] Gas leak detected in apartment complex in Indiranagar. Strong odor spreading to 3 floors. Residents evacuating. Fire department has been alerted and is en route.',
     latitude: 12.9719,
     longitude: 77.6412,
     severity: 'medium',
@@ -60,36 +60,28 @@ const DEMO_ALERTS = [
 ];
 
 async function seed() {
-  console.log('\n  Seeding 5 demo alerts...\n');
+  console.log('\n  Clearing old demo alerts and re-seeding...\n');
 
-  // Get all auth users and ensure they exist in public.users
-  const { data: authUsers } = await supabase.auth.admin.listUsers({ perPage: 10 });
-  
-  if (!authUsers?.users?.length) {
-    console.log('  No users found in auth. Please create an account first.');
+  // Get a user from public.users table
+  const { data: pubUsers } = await supabase.from('users').select('id, email, full_name, role').limit(1);
+  if (!pubUsers?.length) {
+    console.log('  No users found. Create an account first.');
     return;
   }
 
-  const userId = authUsers.users[0].id;
-  const userEmail = authUsers.users[0].email;
-  const userName = authUsers.users[0].user_metadata?.full_name || authUsers.users[0].user_metadata?.name || 'Demo User';
+  const userId = pubUsers[0].id;
+  const userEmail = pubUsers[0].email;
+  console.log(`  User: ${userEmail}\n`);
 
-  // Ensure user exists in public.users table (fixes FK constraint)
-  console.log(`  Syncing user ${userEmail} to public.users...`);
-  const { error: upsertErr } = await supabase.from('users').upsert({
-    id: userId,
-    email: userEmail,
-    full_name: userName,
-    role: authUsers.users[0].user_metadata?.role || 'citizen',
-  }, { onConflict: 'id' });
-
-  if (upsertErr) {
-    console.error('  Failed to sync user:', upsertErr.message);
-    return;
+  // Delete ALL existing alerts
+  const { error: delErr } = await supabase.from('alerts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  if (delErr) {
+    console.error('  Delete failed:', delErr.message);
+  } else {
+    console.log('  Cleared all old alerts.\n');
   }
-  console.log(`  User synced: ${userId}\n`);
 
-  // Insert alerts
+  // Insert fresh demos
   for (const alert of DEMO_ALERTS) {
     const { data, error } = await supabase
       .from('alerts')
@@ -101,11 +93,13 @@ async function seed() {
       console.error(`  FAILED: ${alert.message.slice(0, 50)}...`);
       console.error(`    Error: ${error.message}`);
     } else {
-      console.log(`  OK [${data.severity}]: ${alert.message.replace(/\[MEDIA:[^\]]+\]\s*/g, '').slice(0, 60)}...`);
+      const cleanMsg = alert.message.replace(/\[MEDIA:[^\]]+\]\s*/g, '');
+      const hasMedia = alert.message.includes('[MEDIA:');
+      console.log(`  OK [${data.severity}]${hasMedia ? ' [IMG]' : '      '}: ${cleanMsg.slice(0, 55)}...`);
     }
   }
 
-  console.log('\n  Done! Demo alerts seeded.\n');
+  console.log('\n  Done! 5 fresh demo alerts seeded (2 text + 3 images).\n');
 }
 
 seed();

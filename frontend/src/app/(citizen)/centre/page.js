@@ -116,32 +116,36 @@ export default function CentrePage() {
   const handleCreatePost = async ({ caption, type, media, audio }) => {
     try {
       let finalCaption = caption || "";
-      let toastId = null;
+      let toastId = toast.loading("Posting...");
 
-      // Helper to upload to the "media" bucket
-      const uploadFile = async (file, path) => {
-        const { getSupabaseBrowser } = await import("@/lib/supabase");
-        const supabase = getSupabaseBrowser();
-        const { error } = await supabase.storage.from("media").upload(path, file);
-        if (error) throw error;
-        const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(path);
-        return publicUrl;
-      };
-
-      if (media) {
-        toastId = toast.loading("Uploading photo...");
-        const ext = media.name.split('.').pop() || 'jpg';
-        const path = `uploads/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
-        const mediaUrl = await uploadFile(media, path);
-        finalCaption += `\n\n[MEDIA:${mediaUrl}]`;
-      } else if (audio) {
-        toastId = toast.loading("Uploading voice note...");
-        const path = `audio/sos_${Date.now()}.webm`;
-        const mediaUrl = await uploadFile(audio, path);
-        finalCaption += `\n\n[MEDIA:${mediaUrl}]`;
+      // For media files, try to upload to Supabase storage
+      // If storage isn't configured, fall back gracefully
+      if (media || audio) {
+        try {
+          const { getSupabaseBrowser } = await import("@/lib/supabase");
+          const supabase = getSupabaseBrowser();
+          
+          const file = media || audio;
+          const ext = media ? (media.name.split('.').pop() || 'jpg') : 'webm';
+          const folder = media ? 'uploads' : 'audio';
+          const path = `${folder}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
+          
+          const { error: uploadErr } = await supabase.storage.from("media").upload(path, file);
+          
+          if (!uploadErr) {
+            const { data: { publicUrl } } = supabase.storage.from("media").getPublicUrl(path);
+            finalCaption += `\n\n[MEDIA:${publicUrl}]`;
+          } else {
+            console.warn("Storage upload failed, submitting text-only:", uploadErr.message);
+            if (media) finalCaption += "\n\n[Photo attached but upload unavailable]";
+            if (audio) finalCaption += "\n\n[Voice note attached but upload unavailable]";
+          }
+        } catch (storageErr) {
+          console.warn("Storage not available:", storageErr.message);
+          if (media) finalCaption += "\n\n[Photo attached but upload unavailable]";
+          if (audio) finalCaption += "\n\n[Voice note attached but upload unavailable]";
+        }
       }
-
-      if (!toastId) toastId = toast.loading("Posting...");
 
       await apiFetch("/api/alerts", {
         method: "POST",

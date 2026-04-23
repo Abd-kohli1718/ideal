@@ -39,7 +39,11 @@ async function signup(req, res) {
       return res.status(500).json({ success: false, error: 'Signup did not return a user id' });
     }
 
-    const { error: insertErr } = await supabase.from('users').insert({
+    const serviceSupabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
+
+    const { error: insertErr } = await serviceSupabase.from('users').insert({
       id: data.user.id,
       email,
       full_name: full_name || null,

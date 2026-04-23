@@ -24,7 +24,7 @@ async function createAlert(req, res) {
     });
   }
 
-  const alertType = ['sos_button', 'social_post', 'manual_form'].includes(type)
+  const alertType = ['sos_button', 'social_post', 'manual_form', 'audio_sos', 'media_post'].includes(type)
     ? type
     : 'manual_form';
 

@@ -1,4 +1,5 @@
 const express = require('express');
+const rateLimit = require('express-rate-limit');
 const {
   createAlert,
   listAlerts,
@@ -10,9 +11,17 @@ const { verifySupabaseJwt, requireResponder } = require('../middleware/auth');
 
 const router = express.Router();
 
+const alertCreateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Too many alerts. Please wait before sending another.' },
+});
+
 router.use(verifySupabaseJwt);
 
-router.post('/', createAlert);
+router.post('/', alertCreateLimiter, createAlert);
 router.get('/', listAlerts);
 router.get('/:id', getAlert);
 router.patch('/:id/accept', requireResponder, acceptAlert);

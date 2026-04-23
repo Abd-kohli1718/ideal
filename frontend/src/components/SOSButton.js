@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
+import { motion } from "framer-motion";
 
 export default function SOSButton({ onTrigger }) {
   const [holding, setHolding] = useState(false);
   const [progress, setProgress] = useState(0);
-  const timerRef = useRef(null);
+  const [triggered, setTriggered] = useState(false);
   const startRef = useRef(null);
   const frameRef = useRef(null);
 
@@ -16,7 +17,9 @@ export default function SOSButton({ onTrigger }) {
     if (pct >= 1) {
       setHolding(false);
       setProgress(0);
+      setTriggered(true);
       onTrigger?.();
+      setTimeout(() => setTriggered(false), 2000);
       return;
     }
     frameRef.current = requestAnimationFrame(animate);
@@ -32,44 +35,113 @@ export default function SOSButton({ onTrigger }) {
     setHolding(false);
     setProgress(0);
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    if (timerRef.current) clearTimeout(timerRef.current);
   };
 
   return (
-    <div className="card" style={{ padding: 20, display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
-      <span style={{ fontSize: 10, textTransform: "uppercase", color: "var(--muted)", fontWeight: 500, letterSpacing: "0.06em" }}>
+    <motion.div
+      className="card"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      style={{
+        padding: 28,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 16,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* Background glow when holding */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        background: `radial-gradient(circle at center, rgba(239, 68, 68, ${0.08 * progress}) 0%, transparent 70%)`,
+        transition: "background 0.1s",
+        pointerEvents: "none",
+      }} />
+
+      <span style={{
+        fontSize: 10,
+        textTransform: "uppercase",
+        color: "var(--muted)",
+        fontWeight: 600,
+        letterSpacing: "0.08em",
+        position: "relative",
+      }}>
         Emergency SOS
       </span>
 
-      <div className="sos-ring sos-ring-outer" style={{
-        boxShadow: holding ? `0 0 ${30 * progress}px rgba(239,68,68,${0.2 * progress})` : "none",
-        transition: "box-shadow 0.3s",
-      }}>
-        <div className="sos-ring sos-ring-mid">
-          <div className="sos-ring sos-ring-inner">
-            <button
-              className="sos-btn"
-              onMouseDown={handleDown}
-              onMouseUp={handleUp}
-              onMouseLeave={handleUp}
-              onTouchStart={handleDown}
-              onTouchEnd={handleUp}
-            >
-              <span>SOS</span>
-            </button>
+      {/* Pulsing rings */}
+      <div style={{ position: "relative" }}>
+        {/* Outer pulse ring (animated) */}
+        {!holding && (
+          <div style={{
+            position: "absolute",
+            inset: -20,
+            borderRadius: "50%",
+            border: "1px solid rgba(239, 68, 68, 0.08)",
+            animation: "pulse-ring 3s ease-out infinite",
+          }} />
+        )}
+
+        <div className="sos-ring sos-ring-outer" style={{
+          boxShadow: holding
+            ? `0 0 ${40 * progress}px rgba(239,68,68,${0.25 * progress}), 0 0 ${80 * progress}px rgba(239,68,68,${0.1 * progress})`
+            : "none",
+          transition: "box-shadow 0.15s",
+        }}>
+          <div className="sos-ring sos-ring-mid">
+            <div className="sos-ring sos-ring-inner">
+              <button
+                className="sos-btn"
+                onMouseDown={handleDown}
+                onMouseUp={handleUp}
+                onMouseLeave={handleUp}
+                onTouchStart={handleDown}
+                onTouchEnd={handleUp}
+                style={{
+                  animation: holding ? "none" : undefined,
+                }}
+              >
+                <span>{triggered ? "✓" : "SOS"}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {holding && (
-        <div style={{ width: 80, height: 3, background: "var(--surface2)", borderRadius: 2, overflow: "hidden" }}>
-          <div style={{ width: `${progress * 100}%`, height: "100%", background: "#ef4444", borderRadius: 2, transition: "width 0.05s linear" }} />
-        </div>
-      )}
+      {/* Progress bar */}
+      <div style={{
+        width: 100,
+        height: 3,
+        background: "var(--surface2)",
+        borderRadius: 2,
+        overflow: "hidden",
+        opacity: holding ? 1 : 0.3,
+        transition: "opacity 0.3s",
+      }}>
+        <motion.div
+          style={{
+            width: `${progress * 100}%`,
+            height: "100%",
+            background: "linear-gradient(90deg, #ef4444, #dc2626)",
+            borderRadius: 2,
+          }}
+          transition={{ duration: 0.05 }}
+        />
+      </div>
 
-      <span style={{ fontSize: 10, color: "var(--muted)", textAlign: "center", lineHeight: 1.5 }}>
+      <span style={{
+        fontSize: 10,
+        color: "var(--muted)",
+        textAlign: "center",
+        lineHeight: 1.6,
+        position: "relative",
+      }}>
         Hold 2 seconds · shares your location with nearest responder
       </span>
-    </div>
+    </motion.div>
   );
 }

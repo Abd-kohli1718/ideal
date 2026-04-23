@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabaseBrowser } from "@/lib/supabase";
+import Logo from "@/components/Logo";
 
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -85,17 +86,30 @@ export default function AuthCallbackPage() {
       color: "var(--text)",
       fontFamily: "Inter, sans-serif",
     }}>
-      <div style={{ textAlign: "center" }}>
-        <div style={{
-          width: 32,
-          height: 32,
-          border: "3px solid var(--purple)",
-          borderTopColor: "transparent",
-          borderRadius: "50%",
-          animation: "spin 0.8s linear infinite",
-          margin: "0 auto 16px",
-        }} />
-        <div style={{ fontSize: 14, color: "var(--muted)" }}>{status}</div>
+      <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+        <Logo size={28} />
+        
+        {/* Premium dual-ring spinner */}
+        <div style={{ position: "relative", width: 40, height: 40 }}>
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            border: "2px solid var(--surface2)",
+            borderTopColor: "var(--purple)",
+            borderRadius: "50%",
+            animation: "spin 0.8s linear infinite",
+          }} />
+          <div style={{
+            position: "absolute",
+            inset: 4,
+            border: "2px solid var(--surface2)",
+            borderBottomColor: "rgba(155, 143, 255, 0.7)",
+            borderRadius: "50%",
+            animation: "spin 1.2s linear infinite reverse",
+          }} />
+        </div>
+
+        <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 500 }}>{status}</div>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>

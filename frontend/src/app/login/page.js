@@ -1,354 +1,200 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
+import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import Logo from "@/components/Logo";
-import toast from "react-hot-toast";
-import { motion, AnimatePresence } from "framer-motion";
-import dynamic from "next/dynamic";
 
-const CanvasRevealEffect = dynamic(() => import("@/components/CanvasRevealEffect"), {
-  ssr: false,
-});
+function RedDots() {
+  const dots = useRef(
+    Array.from({ length: 30 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      delay: Math.random() * 4,
+      size: 2 + Math.random() * 3,
+    }))
+  ).current;
 
-const ROLES = [
-  { value: "citizen", label: "Citizen", icon: "👤", desc: "Report emergencies" },
-  { value: "responder", label: "Responder", icon: "🚒", desc: "Respond to alerts" },
-  { value: "admin", label: "Admin", icon: "⚙️", desc: "Monitor & manage" },
-];
+  return (
+    <div className="emergency-bg">
+      {dots.map((d) => (
+        <div
+          key={d.id}
+          className="emergency-dot"
+          style={{
+            left: `${d.left}%`,
+            top: `${d.top}%`,
+            width: d.size,
+            height: d.size,
+            animationDelay: `${d.delay}s`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login, signup } = useAuth();
+  const { user, role } = useAuth();
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [role, setRole] = useState("citizen");
   const [loading, setLoading] = useState(false);
-  const [focusedField, setFocusedField] = useState(null);
+  const [error, setError] = useState("");
 
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      const { getSupabaseBrowser } = await import("@/lib/supabase");
-      const supabase = getSupabaseBrowser();
-      localStorage.setItem("resq_oauth_role", role); // Save selected role for callback
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-      if (error) throw error;
-    } catch (err) {
-      toast.error(err.message || "Google login failed");
-      setLoading(false);
+  useEffect(() => {
+    if (user && role) {
+      router.replace(role === "citizen" ? "/centre" : `/${role}`);
     }
-  };
+  }, [user, role, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      toast.error("Email and password are required");
-      return;
-    }
+    setError("");
     setLoading(true);
+
     try {
-      let userRole;
-      if (mode === "login") {
-        userRole = await login(email, password);
+      if (mode === "signup") {
+        const res = await apiFetch("/api/auth/signup", {
+          method: "POST",
+          body: JSON.stringify({ email, password, full_name: fullName, role: "citizen" }),
+        });
+        const { user: u, session } = res.data;
+        if (session?.access_token) {
+          localStorage.setItem("resq_token", session.access_token);
+          localStorage.setItem("resq_user", JSON.stringify(u));
+          localStorage.setItem("resq_role", "citizen");
+          document.cookie = `resq_role=citizen; path=/; max-age=${60 * 60 * 24 * 7}`;
+          document.cookie = `resq_authed=1; path=/; max-age=${60 * 60 * 24 * 7}`;
+          router.push("/centre");
+        } else {
+          setMode("login");
+          setError("Account created! Check your email to confirm, then sign in.");
+        }
       } else {
-        userRole = await signup(email, password, fullName, role);
+        const res = await apiFetch("/api/auth/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password }),
+        });
+        const { access_token, user: u } = res.data;
+        const userRole = u?.user_metadata?.role || "citizen";
+        localStorage.setItem("resq_token", access_token);
+        localStorage.setItem("resq_user", JSON.stringify(u));
+        localStorage.setItem("resq_role", userRole);
+        document.cookie = `resq_role=${userRole}; path=/; max-age=${60 * 60 * 24 * 7}`;
+        document.cookie = `resq_authed=1; path=/; max-age=${60 * 60 * 24 * 7}`;
+        router.push(userRole === "citizen" ? "/centre" : `/${userRole}`);
       }
-      toast.success(mode === "login" ? "Signed in!" : "Account created!");
-      router.push(`/${userRole}`);
     } catch (err) {
-      toast.error(err.message || "Authentication failed");
+      if (err.code === "AUTH_EXPIRED") return;
+      setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="login-page-wrap">
-      {/* Animated Background */}
-      <div className="login-canvas-bg">
-        <CanvasRevealEffect
-          animationSpeed={3}
-          colors={[
-            [124, 109, 240],
-            [92, 79, 214],
-          ]}
-          dotSize={5}
-          reverse={false}
-        />
-        <div className="login-radial-overlay" />
-        <div className="login-top-fade" />
-      </div>
+    <div style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div className="login-bg" />
+      <RedDots />
 
-      {/* Content */}
-      <div className="login-content-layer">
+      <motion.div
+        className="login-card"
+        initial={{ opacity: 0, y: 30, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        style={{ position: "relative", zIndex: 10 }}
+      >
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <Logo size={36} />
+          <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+            Smart Emergency Response
+          </p>
+        </div>
+
+        <h2 style={{ fontSize: 22, textAlign: "center", marginBottom: 6 }}>
+          {mode === "login" ? "Welcome back" : "Create account"}
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--muted)", textAlign: "center", marginBottom: 24 }}>
+          {mode === "login" ? "Sign in to your account" : "Join the emergency network"}
+        </p>
+
         <AnimatePresence mode="wait">
-          {mode === "login" ? (
+          {error && (
             <motion.div
-              key="login"
-              initial={{ opacity: 0, x: -60 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -60 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className="login-form-container"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              style={{
+                background: "rgba(255,45,45,0.08)",
+                border: "1px solid rgba(255,45,45,0.2)",
+                borderRadius: 10,
+                padding: "10px 14px",
+                marginBottom: 16,
+                fontSize: 12,
+                color: "#ff6b6b",
+              }}
             >
-              {/* Logo */}
-              <div className="login-logo-section">
-                <Logo size={36} />
-                <div className="login-tagline">Centralised Emergency Response</div>
-              </div>
-
-              {/* Heading */}
-              <div className="login-heading-section">
-                <h1 className="login-title">Welcome back</h1>
-                <p className="login-subtitle">Sign in to your account</p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="login-form">
-                {/* Email */}
-                <div className={`login-input-wrap ${focusedField === "email" ? "focused" : ""}`}>
-                  <input
-                    type="email"
-                    placeholder="Email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onFocus={() => setFocusedField("email")}
-                    onBlur={() => setFocusedField(null)}
-                    autoComplete="email"
-                  />
-                </div>
-
-                {/* Password */}
-                <div className={`login-input-wrap ${focusedField === "password" ? "focused" : ""}`}>
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onFocus={() => setFocusedField("password")}
-                    onBlur={() => setFocusedField(null)}
-                    autoComplete="current-password"
-                  />
-                </div>
-
-                {/* Role Selector */}
-                <div className="login-role-section">
-                  <div className="login-role-label">Sign in as</div>
-                  <div className="login-role-grid">
-                    {ROLES.map((r) => (
-                      <motion.div
-                        key={r.value}
-                        className={`login-role-card ${role === r.value ? "selected" : ""}`}
-                        onClick={() => setRole(r.value)}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <div className="login-role-icon">{r.icon}</div>
-                        <div className="login-role-name">{r.label}</div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Submit */}
-                <motion.button
-                  type="submit"
-                  disabled={loading}
-                  className="login-submit-btn"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <span>{loading ? "Please wait…" : "Sign in"}</span>
-                  {!loading && (
-                    <span className="login-btn-arrow">
-                      <span className="login-btn-arrow-inner">→</span>
-                    </span>
-                  )}
-                </motion.button>
-              </form>
-
-              {/* Divider */}
-              <div className="login-divider">
-                <div className="login-divider-line" />
-                <span className="login-divider-text">or</span>
-                <div className="login-divider-line" />
-              </div>
-
-              {/* Google Button */}
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="btn btn-resolve"
-                style={{ width: "100%", marginBottom: 20, padding: "10px 0", fontSize: 13 }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-                Continue with Google
-              </button>
-
-              {/* Toggle */}
-              <div className="login-toggle">
-                <span className="login-toggle-muted">New to ResQ? </span>
-                <motion.button
-                  onClick={() => setMode("signup")}
-                  className="login-toggle-btn"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  Create an account
-                </motion.button>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="signup"
-              initial={{ opacity: 0, x: 60 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 60 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
-              className="login-form-container"
-            >
-              {/* Logo */}
-              <div className="login-logo-section">
-                <Logo size={36} />
-                <div className="login-tagline">Centralised Emergency Response</div>
-              </div>
-
-              {/* Heading */}
-              <div className="login-heading-section">
-                <h1 className="login-title">Join ResQ</h1>
-                <p className="login-subtitle">Create your account</p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="login-form">
-                {/* Full name */}
-                <div className={`login-input-wrap ${focusedField === "name" ? "focused" : ""}`}>
-                  <input
-                    type="text"
-                    placeholder="Full name"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    onFocus={() => setFocusedField("name")}
-                    onBlur={() => setFocusedField(null)}
-                  />
-                </div>
-
-                {/* Email */}
-                <div className={`login-input-wrap ${focusedField === "email" ? "focused" : ""}`}>
-                  <input
-                    type="email"
-                    placeholder="Email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    onFocus={() => setFocusedField("email")}
-                    onBlur={() => setFocusedField(null)}
-                    autoComplete="email"
-                  />
-                </div>
-
-                {/* Password */}
-                <div className={`login-input-wrap ${focusedField === "password" ? "focused" : ""}`}>
-                  <input
-                    type="password"
-                    placeholder="Password (min 6 characters)"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    onFocus={() => setFocusedField("password")}
-                    onBlur={() => setFocusedField(null)}
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                {/* Role Selector */}
-                <div className="login-role-section">
-                  <div className="login-role-label">I am a</div>
-                  <div className="login-role-grid">
-                    {ROLES.map((r) => (
-                      <motion.div
-                        key={r.value}
-                        className={`login-role-card ${role === r.value ? "selected" : ""}`}
-                        onClick={() => setRole(r.value)}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <div className="login-role-icon">{r.icon}</div>
-                        <div className="login-role-name">{r.label}</div>
-                        <div className="login-role-desc">{r.desc}</div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Submit */}
-                <motion.button
-                  type="submit"
-                  disabled={loading}
-                  className="login-submit-btn"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <span>{loading ? "Please wait…" : "Create account"}</span>
-                  {!loading && (
-                    <span className="login-btn-arrow">
-                      <span className="login-btn-arrow-inner">→</span>
-                    </span>
-                  )}
-                </motion.button>
-              </form>
-
-              {/* Divider */}
-              <div className="login-divider">
-                <div className="login-divider-line" />
-                <span className="login-divider-text">or</span>
-                <div className="login-divider-line" />
-              </div>
-
-              {/* Google Button */}
-              <button
-                type="button"
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                className="btn btn-resolve"
-                style={{ width: "100%", marginBottom: 20, padding: "10px 0", fontSize: 13 }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ marginRight: 6 }}>
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                </svg>
-                Continue with Google
-              </button>
-
-              {/* Toggle */}
-              <div className="login-toggle">
-                <span className="login-toggle-muted">Already have an account? </span>
-                <motion.button
-                  onClick={() => setMode("login")}
-                  className="login-toggle-btn"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  Sign in
-                </motion.button>
-              </div>
+              {error}
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+
+        <form onSubmit={handleSubmit}>
+          {mode === "signup" && (
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} style={{ marginBottom: 12 }}>
+              <input className="input" placeholder="Full name" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            </motion.div>
+          )}
+          <input className="input" type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ marginBottom: 12 }} />
+          <input className="input" type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} required style={{ marginBottom: 20 }} />
+
+          <motion.button
+            className="btn btn-primary"
+            type="submit"
+            disabled={loading}
+            style={{ width: "100%", padding: "14px 20px", fontSize: 14, borderRadius: 14 }}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            {loading ? (
+              <div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} />
+            ) : (
+              mode === "login" ? "Sign in" : "Create account"
+            )}
+          </motion.button>
+        </form>
+
+        <div style={{ textAlign: "center", marginTop: 20, fontSize: 13, color: "var(--muted)" }}>
+          {mode === "login" ? "New to ResQ? " : "Already have an account? "}
+          <button
+            onClick={() => { setMode(mode === "login" ? "signup" : "login"); setError(""); }}
+            style={{ background: "none", border: "none", color: "var(--red)", cursor: "pointer", fontWeight: 600, fontFamily: "inherit", fontSize: 13 }}
+          >
+            {mode === "login" ? "Create account" : "Sign in"}
+          </button>
+        </div>
+
+        <div style={{ textAlign: "center", marginTop: 16 }}>
+          <button
+            onClick={() => router.push("/portal")}
+            style={{
+              background: "none", border: "1px solid var(--border)",
+              borderRadius: 10, padding: "8px 16px",
+              color: "var(--muted)", cursor: "pointer",
+              fontFamily: "inherit", fontSize: 11, fontWeight: 500,
+              transition: "all 0.2s",
+            }}
+          >
+            Admin / Responder Portal →
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }

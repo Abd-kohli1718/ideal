@@ -109,8 +109,11 @@ export default function AdminPage() {
 
   const handleDispatch = (alertId) => {
     const total = dispatchRes.ambulances + dispatchRes.fire + dispatchRes.police;
-    if (total === 0) { toast.error("Assign at least one resource"); return; }
-    toast.success(`Dispatched ${total} unit(s) to incident`);
+    if (total === 0) {
+      toast.success("Incident processed without deploying resources");
+    } else {
+      toast.success(`Dispatched ${total} unit(s) to incident`);
+    }
     setExpandedId(null);
     setDispatchRes({ ambulances: 0, fire: 0, police: 0 });
   };

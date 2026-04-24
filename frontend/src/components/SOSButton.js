@@ -28,9 +28,7 @@ export default function SOSButton({ onTrigger }) {
   }, [onTrigger]);
 
   const handleDown = (e) => {
-    // Only accept left click or touch
-    if (e.button !== undefined && e.button !== 0) return;
-    
+    // If holding already started, ignore
     if (holdingRef.current) return;
     holdingRef.current = true;
     setHolding(true);
@@ -105,10 +103,15 @@ export default function SOSButton({ onTrigger }) {
             <div className="sos-ring sos-ring-inner">
               <button
                 className="sos-btn"
-                onPointerDown={handleDown}
-                onPointerUp={handleUp}
-                onPointerLeave={handleUp}
-                onPointerCancel={handleUp}
+                onMouseDown={handleDown}
+                onMouseUp={handleUp}
+                onMouseLeave={handleUp}
+                onTouchStart={(e) => {
+                  // Prevent touch scroll / context menu
+                  if (e.cancelable) e.preventDefault();
+                  handleDown(e);
+                }}
+                onTouchEnd={handleUp}
                 onContextMenu={(e) => { e.preventDefault(); return false; }}
                 style={{
                   animation: holding ? "none" : undefined,

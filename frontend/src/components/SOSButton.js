@@ -9,12 +9,14 @@ export default function SOSButton({ onTrigger }) {
   const [triggered, setTriggered] = useState(false);
   const startRef = useRef(null);
   const frameRef = useRef(null);
+  const holdingRef = useRef(false);
 
   const animate = useCallback(() => {
     const elapsed = Date.now() - startRef.current;
     const pct = Math.min(elapsed / 2000, 1);
     setProgress(pct);
     if (pct >= 1) {
+      holdingRef.current = false;
       setHolding(false);
       setProgress(0);
       setTriggered(true);
@@ -25,13 +27,20 @@ export default function SOSButton({ onTrigger }) {
     frameRef.current = requestAnimationFrame(animate);
   }, [onTrigger]);
 
-  const handleDown = () => {
+  const handleDown = (e) => {
+    // Only accept left click or touch
+    if (e.button !== undefined && e.button !== 0) return;
+    
+    if (holdingRef.current) return;
+    holdingRef.current = true;
     setHolding(true);
     startRef.current = Date.now();
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
     frameRef.current = requestAnimationFrame(animate);
   };
 
   const handleUp = () => {
+    holdingRef.current = false;
     setHolding(false);
     setProgress(0);
     if (frameRef.current) cancelAnimationFrame(frameRef.current);
@@ -96,13 +105,17 @@ export default function SOSButton({ onTrigger }) {
             <div className="sos-ring sos-ring-inner">
               <button
                 className="sos-btn"
-                onMouseDown={handleDown}
-                onMouseUp={handleUp}
-                onMouseLeave={handleUp}
-                onTouchStart={handleDown}
-                onTouchEnd={handleUp}
+                onPointerDown={handleDown}
+                onPointerUp={handleUp}
+                onPointerLeave={handleUp}
+                onPointerCancel={handleUp}
+                onContextMenu={(e) => { e.preventDefault(); return false; }}
                 style={{
                   animation: holding ? "none" : undefined,
+                  WebkitTouchCallout: "none",
+                  WebkitUserSelect: "none",
+                  userSelect: "none",
+                  touchAction: "none"
                 }}
               >
                 <span>{triggered ? "✓" : "SOS"}</span>

@@ -6,6 +6,7 @@ const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./src/routes/auth');
 const alertsRoutes = require('./src/routes/alerts');
+const messagesRoutes = require('./src/routes/messages');
 const simulateRoutes = require('./src/routes/simulate');
 const { locationRouter, respondersListRouter } = require('./src/routes/responder');
 
@@ -59,6 +60,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/alerts', alertsRoutes);
+app.use('/api/alerts', messagesRoutes);
 app.use('/api/simulate', simulateRoutes);
 app.use('/api/responder', locationRouter);
 app.use('/api/responders', respondersListRouter);

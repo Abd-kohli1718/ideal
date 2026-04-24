@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import StatusTimeline from "@/components/StatusTimeline";
+import ChatPanel from "@/components/ChatPanel";
 
 function timeAgo(d) {
   if (!d) return "";
@@ -30,6 +31,7 @@ export default function HistoryPage() {
   const { user } = useAuth();
   const [alerts, setAlerts] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
+  const [chatAlertId, setChatAlertId] = useState(null);
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -63,6 +65,7 @@ export default function HistoryPage() {
           const sev = a.triage_result?.severity || a.severity || "low";
           const isOpen = selectedId === a.id;
           const { cleanMsg, mediaUrls } = parseMedia(a.message || "");
+          const canChat = a.status === "accepted" || a.status === "active";
           return (
             <motion.div
               key={a.id}
@@ -137,6 +140,37 @@ export default function HistoryPage() {
                           ))}
                         </div>
                       )}
+
+                      {/* Chat Button */}
+                      {canChat && (
+                        <div style={{ marginTop: 14 }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="chat-trigger-btn"
+                            onClick={() => setChatAlertId(a.id)}
+                          >
+                            <span className="chat-trigger-icon">💬</span>
+                            Chat with Responder
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Resolved — view chat history */}
+                      {a.status === "resolved" && (
+                        <div style={{ marginTop: 14 }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="chat-trigger-btn"
+                            style={{
+                              borderColor: "rgba(34, 197, 94, 0.2)",
+                              background: "rgba(34, 197, 94, 0.06)",
+                              color: "var(--green)",
+                            }}
+                            onClick={() => setChatAlertId(a.id)}
+                          >
+                            <span className="chat-trigger-icon">📋</span>
+                            View Chat History
+                          </button>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -145,6 +179,17 @@ export default function HistoryPage() {
           );
         })}
       </div>
+
+      {/* Chat Panel Modal */}
+      <AnimatePresence>
+        {chatAlertId && (
+          <ChatPanel
+            alertId={chatAlertId}
+            currentUserId={user?.id}
+            onClose={() => setChatAlertId(null)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

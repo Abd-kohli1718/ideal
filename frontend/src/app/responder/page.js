@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 import toast from "react-hot-toast";
 import AnimatedBackground from "@/components/AnimatedBackground";
+import ChatPanel from "@/components/ChatPanel";
 
 function timeAgo(d) {
   if (!d) return "";
@@ -38,6 +39,16 @@ export default function ResponderPage() {
   const [alerts, setAlerts] = useState([]);
   const [filter, setFilter] = useState("active");
   const [selectedId, setSelectedId] = useState(null);
+  const [chatAlertId, setChatAlertId] = useState(null);
+
+  // Get current user ID from localStorage
+  const [currentUserId, setCurrentUserId] = useState(null);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("resq_user");
+      if (saved) setCurrentUserId(JSON.parse(saved)?.id);
+    } catch {}
+  }, []);
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -351,6 +362,18 @@ export default function ResponderPage() {
                             ))}
                           </div>
 
+                          {/* Chat Button */}
+                          <div style={{ marginBottom: 12 }} onClick={e => e.stopPropagation()}>
+                            <button
+                              className="chat-trigger-btn"
+                              style={{ width: "100%", justifyContent: "center", padding: "10px 16px" }}
+                              onClick={() => setChatAlertId(a.id)}
+                            >
+                              <span className="chat-trigger-icon">💬</span>
+                              {a.status === "resolved" ? "View Chat History" : "Chat with Citizen"}
+                            </button>
+                          </div>
+
                           {/* Action buttons */}
                           {a.status !== "resolved" && (
                             <div style={{ display: "flex", gap: 8 }} onClick={e => e.stopPropagation()}>
@@ -417,6 +440,17 @@ export default function ResponderPage() {
           </div>
         )}
       </div>
+
+      {/* Chat Panel Modal */}
+      <AnimatePresence>
+        {chatAlertId && (
+          <ChatPanel
+            alertId={chatAlertId}
+            currentUserId={currentUserId}
+            onClose={() => setChatAlertId(null)}
+          />
+        )}
+      </AnimatePresence>
 
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
     </div>

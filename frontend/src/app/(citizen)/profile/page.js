@@ -94,6 +94,41 @@ export default function ProfilePage() {
         <HelplineSection />
       </motion.div>
 
+      {/* Nearby Facilities */}
+      <motion.div
+        className="card"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        style={{ padding: 20, marginBottom: 20 }}
+      >
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>📍 Nearby Emergency Services</h3>
+        {[
+          { icon: "🏥", name: "Victoria Hospital", dist: "2.1 km", detail: "24/7 Emergency, Trauma Center" },
+          { icon: "🏥", name: "Manipal Hospital", dist: "4.3 km", detail: "Multi-specialty, ICU available" },
+          { icon: "🏥", name: "St. John's Medical College", dist: "5.7 km", detail: "Burns unit, Pediatric emergency" },
+          { icon: "👮", name: "Ashok Nagar Police Station", dist: "1.8 km", detail: "PCR Van, Women helpdesk" },
+          { icon: "👮", name: "Koramangala Police Station", dist: "3.2 km", detail: "24/7, Cybercrime cell" },
+          { icon: "🚒", name: "MG Road Fire Station", dist: "2.5 km", detail: "3 fire tenders, Rescue unit" },
+          { icon: "🚒", name: "Jayanagar Fire Station", dist: "4.1 km", detail: "2 fire tenders, Hazmat team" },
+        ].map((f, i) => (
+          <div key={i} style={{
+            display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+            borderBottom: i < 6 ? "1px solid var(--border)" : "none",
+          }}>
+            <span style={{ fontSize: 20, width: 30, textAlign: "center" }}>{f.icon}</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{f.name}</div>
+              <div style={{ fontSize: 10, color: "var(--muted)" }}>{f.detail}</div>
+            </div>
+            <span style={{
+              padding: "4px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600,
+              background: "var(--surface2)", color: "var(--text2)",
+            }}>{f.dist}</span>
+          </div>
+        ))}
+      </motion.div>
+
       {/* About + Logout */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}

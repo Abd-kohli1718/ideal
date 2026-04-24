@@ -126,6 +126,33 @@ export default function ResponderPage() {
         ))}
       </div>
 
+      {/* === NEARBY FACILITIES === */}
+      <div style={{
+        background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14,
+        padding: "14px 16px", marginBottom: 16,
+      }}>
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: "var(--text)" }}>📍 Nearby Facilities</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          {[
+            { icon: "🏥", name: "Victoria Hospital", dist: "2.1 km" },
+            { icon: "👮", name: "Ashok Nagar PS", dist: "1.8 km" },
+            { icon: "🚒", name: "MG Road Fire Stn", dist: "2.5 km" },
+            { icon: "🏥", name: "Manipal Hospital", dist: "4.3 km" },
+          ].map((f, i) => (
+            <div key={i} style={{
+              display: "flex", alignItems: "center", gap: 8, padding: "8px 10px",
+              background: "var(--surface2)", borderRadius: 10, fontSize: 11,
+            }}>
+              <span>{f.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, color: "var(--text2)" }}>{f.name}</div>
+              </div>
+              <span style={{ color: "var(--muted)", fontSize: 10 }}>{f.dist}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* === MY ACTIVE MISSION BANNER === */}
       {myAccepted > 0 && (
         <motion.div

@@ -66,11 +66,19 @@ function parseMedia(message) {
   return { cleanMsg, mediaUrls: urls };
 }
 
+// Deterministic votes from ID
+function hashVotes(id) {
+  if (!id) return 0;
+  let h = 0;
+  for (let i = 0; i < String(id).length; i++) h = ((h << 5) - h + String(id).charCodeAt(i)) | 0;
+  return Math.abs(h % 478) + 3;
+}
+
 export default function AdminPage() {
   const [alerts, setAlerts] = useState([]);
   const [tab, setTab] = useState("emergencies");
   const [expandedId, setExpandedId] = useState(null);
-  const [resources, setResources] = useState({ ambulances: 0, fire: 0, police: 0 });
+  const [dispatchRes, setDispatchRes] = useState({ ambulances: 0, fire: 0, police: 0 });
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchAlerts = useCallback(async () => {
@@ -100,26 +108,22 @@ export default function AdminPage() {
   const critical = alerts.filter(a => (a.triage_result?.severity || a.severity) === "high").length;
 
   const handleDispatch = (alertId) => {
-    const total = resources.ambulances + resources.fire + resources.police;
+    const total = dispatchRes.ambulances + dispatchRes.fire + dispatchRes.police;
     if (total === 0) { toast.error("Assign at least one resource"); return; }
     toast.success(`Dispatched ${total} unit(s) to incident`);
     setExpandedId(null);
-    setResources({ ambulances: 0, fire: 0, police: 0 });
+    setDispatchRes({ ambulances: 0, fire: 0, police: 0 });
   };
 
-  const handleSimulate = async () => {
-    try {
-      await apiFetch("/api/simulate/social", { method: "POST" });
-      toast.success("Simulated emergency alert generated!");
-      fetchAlerts();
-    } catch (err) {
-      toast.error(err.message || "Simulation failed");
-    }
-  };
+  // Most upvoted alerts
+  const topUpvoted = [...alerts]
+    .map(a => ({ ...a, votes: hashVotes(a.id) }))
+    .sort((a, b) => b.votes - a.votes)
+    .slice(0, 5);
 
   const tabs = [
     { id: "emergencies", label: "Emergencies", icon: "🚨", count: active },
-    { id: "centre", label: "Community Feed", icon: "📡", count: sorted.filter(a => a.type === "social_post").length },
+    { id: "resources", label: "Resources", icon: "🚑" },
     { id: "analytics", label: "Analytics", icon: "📊" },
   ];
 
@@ -151,19 +155,6 @@ export default function AdminPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <button
-            onClick={handleSimulate}
-            style={{
-              background: "linear-gradient(135deg, rgba(255,45,45,0.15), rgba(255,45,45,0.05))",
-              border: "1px solid rgba(255,45,45,0.3)", borderRadius: 12,
-              padding: "8px 14px", fontSize: 11, color: "#ff6b6b",
-              cursor: "pointer", fontFamily: "inherit", fontWeight: 600,
-              display: "flex", alignItems: "center", gap: 6,
-              transition: "all 0.2s",
-            }}
-          >
-            ⚡ Simulate Alert
-          </button>
           <div style={{
             background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12,
             padding: "8px 14px", fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6,
@@ -405,62 +396,97 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* === COMMUNITY FEED TAB === */}
-      {tab === "centre" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{
-            background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14,
-            padding: "12px 16px", fontSize: 12, color: "var(--muted)", marginBottom: 4,
-            display: "flex", alignItems: "center", gap: 8,
-          }}>
-            <span style={{ fontSize: 16 }}>💡</span>
-            Review community-submitted posts. Verify real emergencies and escalate them to active incidents.
+      {/* === RESOURCES TAB === */}
+      {tab === "resources" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {/* Available Units */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Available Response Units</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+              {[
+                { icon: "🚑", name: "Ambulances", available: 12, total: 18, color: "#ff6b6b" },
+                { icon: "🚒", name: "Fire Trucks", available: 8, total: 12, color: "#ffaa28" },
+                { icon: "🚔", name: "PCR Vehicles", available: 24, total: 30, color: "#5b8def" },
+                { icon: "🚁", name: "Helicopters", available: 2, total: 3, color: "#a78bfa" },
+                { icon: "⛑️", name: "NDRF Teams", available: 4, total: 6, color: "#4cd17f" },
+                { icon: "🚐", name: "Rescue Vans", available: 6, total: 10, color: "#f59e0b" },
+              ].map(u => (
+                <div key={u.name} style={{
+                  background: "var(--surface2)", borderRadius: 12, padding: 14, textAlign: "center",
+                  border: "1px solid var(--border)",
+                }}>
+                  <div style={{ fontSize: 24, marginBottom: 6 }}>{u.icon}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: u.color }}>{u.available}</div>
+                  <div style={{ fontSize: 9, color: "var(--muted)", marginBottom: 2 }}>of {u.total} total</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text2)" }}>{u.name}</div>
+                </div>
+              ))}
+            </div>
           </div>
-          {filtered.filter(a => a.type === "social_post").map((a, i) => {
-            const sev = a.triage_result?.severity || a.severity || "low";
-            const { cleanMsg, mediaUrls } = parseMedia(a.message || "");
-            return (
-              <motion.div key={a.id} className="card" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04 }} style={{ padding: 16, borderRadius: 16 }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                  <div style={{
-                    width: 36, height: 36, borderRadius: 10, background: "var(--surface2)",
-                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0,
-                  }}>📡</div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, color: "var(--text)", marginBottom: 6, lineHeight: 1.4 }}>{cleanMsg}</div>
-                    {mediaUrls.length > 0 && (
-                      <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
-                        {mediaUrls.map((url, j) => (
-                          <img key={j} src={url} alt="media" style={{
-                            width: 100, height: 70, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)",
-                          }} />
-                        ))}
+
+          {/* Nearby Facilities */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Key Facilities</h3>
+            {[
+              { icon: "🏥", name: "Victoria Hospital", dist: "2.1 km", beds: "45 beds free", type: "hospital" },
+              { icon: "🏥", name: "Manipal Hospital", dist: "4.3 km", beds: "28 beds free", type: "hospital" },
+              { icon: "🏥", name: "St. John's Medical", dist: "5.7 km", beds: "12 beds free", type: "hospital" },
+              { icon: "👮", name: "Ashok Nagar PS", dist: "1.8 km", beds: "PCR available", type: "police" },
+              { icon: "👮", name: "Koramangala PS", dist: "3.2 km", beds: "PCR available", type: "police" },
+              { icon: "🚒", name: "MG Road Fire Station", dist: "2.5 km", beds: "3 trucks", type: "fire" },
+              { icon: "🚒", name: "Jayanagar Fire Station", dist: "4.1 km", beds: "2 trucks", type: "fire" },
+            ].map((f, i) => (
+              <div key={i} style={{
+                display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                borderBottom: i < 6 ? "1px solid var(--border)" : "none",
+              }}>
+                <span style={{ fontSize: 20, width: 36, textAlign: "center" }}>{f.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{f.name}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted)" }}>{f.beds}</div>
+                </div>
+                <span style={{
+                  padding: "4px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600,
+                  background: "var(--surface2)", color: "var(--text2)",
+                }}>{f.dist}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Most Upvoted Reports */}
+          {topUpvoted.length > 0 && (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>🔥 Most Upvoted Reports</h3>
+              {topUpvoted.map((a, i) => {
+                const sev = a.triage_result?.severity || a.severity || "low";
+                const sevCfg = SEV_COLORS[sev] || SEV_COLORS.low;
+                const { cleanMsg } = parseMedia(a.message || "");
+                return (
+                  <div key={a.id} style={{
+                    display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                    borderBottom: i < topUpvoted.length - 1 ? "1px solid var(--border)" : "none",
+                  }}>
+                    <div style={{
+                      width: 32, minWidth: 32, height: 32, borderRadius: 8,
+                      background: sevCfg.bg, border: `1px solid ${sevCfg.border}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 12, fontWeight: 800, color: sevCfg.text,
+                    }}>#{i + 1}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, color: "var(--text)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {cleanMsg}
                       </div>
-                    )}
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                      <SeverityChip severity={sev} />
-                      <span style={{ fontSize: 10, color: "var(--muted)" }}>{timeAgo(a.created_at)}</span>
+                    </div>
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 4,
+                      padding: "4px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+                      background: "rgba(255,45,45,0.08)", color: "#ff6b6b",
+                    }}>
+                      ▲ {a.votes}
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <button onClick={() => toast.success("Escalated to active incidents")} style={{
-                      padding: "6px 12px", borderRadius: 8, border: "none", cursor: "pointer",
-                      background: "rgba(76,209,127,0.15)", color: "#4cd17f", fontSize: 11, fontWeight: 600, fontFamily: "inherit",
-                    }}>Verify</button>
-                    <button onClick={() => toast("Post dismissed")} style={{
-                      padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border)", cursor: "pointer",
-                      background: "transparent", color: "var(--muted)", fontSize: 11, fontWeight: 500, fontFamily: "inherit",
-                    }}>Dismiss</button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-          {filtered.filter(a => a.type === "social_post").length === 0 && (
-            <div style={{ textAlign: "center", padding: 60, color: "var(--muted)" }}>
-              <div style={{ fontSize: 40, opacity: 0.2, marginBottom: 12 }}>📡</div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>No community posts</div>
+                );
+              })}
             </div>
           )}
         </div>

@@ -764,6 +764,39 @@ select.input { cursor: pointer; }
   .admin-panels-grid { grid-template-columns: 1fr; }
   .responder-grid { grid-template-columns: 1fr; }
   .sidenav { display: none; }
+  
+  /* Better mobile alignment */
+  h1 { font-size: 22px; }
+  h2 { font-size: 18px; }
+  h3 { font-size: 15px; }
+  
+  /* Touch-friendly buttons */
+  .btn { min-height: 44px; }
+  .filter-pill { min-height: 36px; padding: 6px 12px; }
+  
+  /* Cards breathe on mobile */
+  .card { border-radius: 14px; }
+  .post-card { border-radius: 14px; }
+  
+  /* Admin stat grid on phone */
+  .admin-stats-grid { grid-template-columns: 1fr 1fr !important; }
+}
+
+@media (max-width: 400px) {
+  h1 { font-size: 20px; }
+  .sos-btn { width: 140px; height: 140px; font-size: 24px; }
+  .nav-icon { font-size: 20px; }
+  .nav-item { font-size: 9px; padding: 6px 10px; }
+}
+
+/* Safe area for notched phones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .bottom-nav {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .citizen-page {
+    padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  }
 }
 
 /* ===== PREMIUM UTILITIES ===== */

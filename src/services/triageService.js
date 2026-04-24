@@ -147,6 +147,20 @@ async function callGemini(systemPrompt, userText) {
  * @param {number} latitude
  * @param {number} longitude
  */
+async function callInferenceServer(payload) {
+  try {
+    const res = await fetch('http://localhost:5000/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error(`Inference server HTTP ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    return null;
+  }
+}
+
 async function runTriage(alertId, message, type, latitude, longitude) {
   const supabase = getServiceClient();
   const defaults = {
@@ -181,7 +195,26 @@ async function runTriage(alertId, message, type, latitude, longitude) {
   let normalized = null;
 
   try {
-    if (process.env.GEMINI_API_KEY) {
+    // 1. Try PyTorch / ML inference server first!
+    const mlResult = await callInferenceServer({
+      message: message || '',
+      type: type || 'manual_form',
+      latitude: latitude,
+      longitude: longitude
+    });
+
+    if (mlResult && mlResult.severity) {
+      normalized = {
+        severity: mlResult.severity,
+        response_type: mlResult.response_type || 'unknown',
+        is_duplicate: mlResult.is_duplicate || false,
+        extracted_location: mlResult.extracted_location || null,
+      };
+      rawText = `[ML Inference Server]\nSeverity: ${mlResult.severity} (${(mlResult.severity_confidence || 0).toFixed(2)})\nResponse: ${mlResult.response_type} (${(mlResult.response_confidence || 0).toFixed(2)})\nImage Severity: ${mlResult.image_severity || 'none'}`;
+    }
+
+    // 2. Try Gemini if ML server failed
+    if (!normalized && process.env.GEMINI_API_KEY) {
       try {
         rawText = (await callGemini(TRIAGE_SYSTEM_PROMPT, userText)) || '';
         const parsed = parseTriageJson(rawText);
@@ -192,6 +225,7 @@ async function runTriage(alertId, message, type, latitude, longitude) {
       }
     }
 
+    // 3. Fallback to Keyword Triage
     if (!normalized) {
       const kw = runKeywordTriage(message, type, contextAlerts, alertId);
       normalized = {

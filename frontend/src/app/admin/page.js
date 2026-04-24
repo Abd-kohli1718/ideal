@@ -350,13 +350,13 @@ export default function AdminPage() {
                                   <div style={{ fontSize: 22, marginBottom: 4 }}>{r.icon}</div>
                                   <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 8, fontWeight: 500 }}>{r.label}</div>
                                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                                    <button onClick={() => setResources(p => ({ ...p, [r.key]: Math.max(0, p[r.key] - 1) }))} style={{
+                                    <button onClick={() => setDispatchRes(p => ({ ...p, [r.key]: Math.max(0, p[r.key] - 1) }))} style={{
                                       width: 28, height: 28, borderRadius: 8, border: "1px solid var(--border)",
                                       background: "var(--surface)", color: "var(--text)", cursor: "pointer", fontSize: 14, fontWeight: 700,
                                       display: "flex", alignItems: "center", justifyContent: "center",
                                     }}>-</button>
-                                    <span style={{ fontSize: 18, fontWeight: 800, minWidth: 24, textAlign: "center", color: "var(--text)" }}>{resources[r.key]}</span>
-                                    <button onClick={() => setResources(p => ({ ...p, [r.key]: p[r.key] + 1 }))} style={{
+                                    <span style={{ fontSize: 18, fontWeight: 800, minWidth: 24, textAlign: "center", color: "var(--text)" }}>{dispatchRes[r.key]}</span>
+                                    <button onClick={() => setDispatchRes(p => ({ ...p, [r.key]: p[r.key] + 1 }))} style={{
                                       width: 28, height: 28, borderRadius: 8, border: "1px solid var(--border)",
                                       background: "var(--surface)", color: "var(--text)", cursor: "pointer", fontSize: 14, fontWeight: 700,
                                       display: "flex", alignItems: "center", justifyContent: "center",

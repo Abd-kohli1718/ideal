@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 import toast from "react-hot-toast";
+import AnimatedBackground from "@/components/AnimatedBackground";
 
 function timeAgo(d) {
   if (!d) return "";
@@ -77,7 +78,9 @@ export default function ResponderPage() {
   const myAccepted = alerts.filter(a => a.status === "accepted").length;
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 16px" }}>
+    <>
+    <AnimatedBackground />
+    <div style={{ maxWidth: 800, margin: "0 auto", padding: "0 16px", position: "relative", zIndex: 1 }}>
 
       {/* === HEADER === */}
       <motion.div initial={{ opacity: 0, y: -15 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: 28 }}>
@@ -390,5 +393,6 @@ export default function ResponderPage() {
 
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
     </div>
+    </>
   );
 }

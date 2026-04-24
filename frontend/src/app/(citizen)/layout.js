@@ -4,6 +4,7 @@ import { AuthProvider } from "@/lib/auth";
 import { Toaster } from "react-hot-toast";
 import RouteGuard from "@/components/RouteGuard";
 import BottomNav from "@/components/BottomNav";
+import AnimatedBackground from "@/components/AnimatedBackground";
 
 export default function CitizenGroupLayout({ children }) {
   return (
@@ -22,7 +23,8 @@ export default function CitizenGroupLayout({ children }) {
         }}
       />
       <RouteGuard requiredRole="citizen">
-        <div className="citizen-page">
+        <AnimatedBackground />
+        <div className="citizen-page" style={{ position: "relative", zIndex: 1 }}>
           {children}
         </div>
         <BottomNav />

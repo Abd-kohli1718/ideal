@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 import toast from "react-hot-toast";
+import AnimatedBackground from "@/components/AnimatedBackground";
 
 function timeAgo(d) {
   if (!d) return "";
@@ -123,7 +124,9 @@ export default function AdminPage() {
   ];
 
   return (
-    <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 16px" }}>
+    <>
+    <AnimatedBackground />
+    <div style={{ maxWidth: 960, margin: "0 auto", padding: "0 16px", position: "relative", zIndex: 1 }}>
 
       {/* === HEADER === */}
       <motion.div
@@ -172,7 +175,7 @@ export default function AdminPage() {
       </motion.div>
 
       {/* === STAT CARDS === */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
         {[
           { num: total, label: "Total Incidents", gradient: "linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02))", icon: "📋" },
           { num: active, label: "Active Now", gradient: "linear-gradient(135deg, rgba(255,45,45,0.15), rgba(255,45,45,0.03))", icon: "🔴", highlight: true },
@@ -532,5 +535,6 @@ export default function AdminPage() {
 
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
     </div>
+    </>
   );
 }

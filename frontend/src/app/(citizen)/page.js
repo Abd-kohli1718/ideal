@@ -6,27 +6,7 @@ import { apiFetch } from "@/lib/api";
 import Logo from "@/components/Logo";
 import toast from "react-hot-toast";
 
-function RedDots() {
-  const dots = useRef(
-    Array.from({ length: 20 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      delay: Math.random() * 4,
-      size: 2 + Math.random() * 2,
-    }))
-  ).current;
-
-  return (
-    <div className="emergency-bg">
-      {dots.map((d) => (
-        <div key={d.id} className="emergency-dot" style={{ left: `${d.left}%`, top: `${d.top}%`, width: d.size, height: d.size, animationDelay: `${d.delay}s` }} />
-      ))}
-    </div>
-  );
-}
-
-const SOS_COOLDOWN_MS = 30000; // 30 second cooldown (C1)
+const SOS_COOLDOWN_MS = 30000;
 
 export default function SOSHomePage() {
   const [userPos, setUserPos] = useState(null);
@@ -36,12 +16,11 @@ export default function SOSHomePage() {
   const [progress, setProgress] = useState(0);
   const [triggered, setTriggered] = useState(false);
   const [sending, setSending] = useState(false);
-  const [cooldown, setCooldown] = useState(0); // seconds remaining
+  const [cooldown, setCooldown] = useState(0);
   const startRef = useRef(null);
   const frameRef = useRef(null);
   const cooldownRef = useRef(null);
 
-  // Get location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -50,118 +29,65 @@ export default function SOSHomePage() {
           setLocStatus(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
           setLocAvailable(true);
         },
-        () => {
-          setLocStatus("Location unavailable — enable GPS for SOS");
-          setLocAvailable(false);
-        }
+        () => { setLocStatus("Location unavailable — enable GPS for SOS"); setLocAvailable(false); }
       );
-    } else {
-      setLocStatus("Geolocation not supported");
-      setLocAvailable(false);
-    }
+    } else { setLocStatus("Geolocation not supported"); setLocAvailable(false); }
   }, []);
 
-  // Cooldown timer cleanup
-  useEffect(() => {
-    return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); };
-  }, []);
+  useEffect(() => { return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); }; }, []);
 
   const startCooldown = useCallback(() => {
     setCooldown(SOS_COOLDOWN_MS / 1000);
     cooldownRef.current = setInterval(() => {
-      setCooldown((c) => {
-        if (c <= 1) {
-          clearInterval(cooldownRef.current);
-          return 0;
-        }
-        return c - 1;
-      });
+      setCooldown((c) => { if (c <= 1) { clearInterval(cooldownRef.current); return 0; } return c - 1; });
     }, 1000);
   }, []);
 
   const triggerSOS = useCallback(async () => {
-    // C11: Block if no real location
-    if (!locAvailable || !userPos) {
-      toast.error("Location required for SOS. Please enable GPS.", { duration: 4000 });
-      return;
-    }
-
+    if (!locAvailable || !userPos) { toast.error("Location required for SOS.", { duration: 4000 }); return; }
     setSending(true);
     try {
       await apiFetch("/api/alerts", {
         method: "POST",
-        body: JSON.stringify({
-          type: "sos_button",
-          message: "SOS Emergency — Immediate help needed",
-          latitude: userPos.latitude,
-          longitude: userPos.longitude,
-        }),
+        body: JSON.stringify({ type: "sos_button", message: "SOS Emergency — Immediate help needed",
+          latitude: userPos.latitude, longitude: userPos.longitude }),
       });
       setTriggered(true);
       toast.success("Emergency SOS sent! Help is on the way.", { duration: 4000 });
-      // C1: Start cooldown to prevent duplicates
       startCooldown();
       setTimeout(() => setTriggered(false), 5000);
     } catch (err) {
-      if (err.code === "AUTH_EXPIRED") {
-        window.location.href = "/login";
-        return;
-      }
+      if (err.code === "AUTH_EXPIRED") { window.location.href = "/login"; return; }
       toast.error(err.message || "Failed to send SOS");
-    } finally {
-      setSending(false);
-    }
+    } finally { setSending(false); }
   }, [userPos, locAvailable, startCooldown]);
 
   const animate = useCallback(() => {
     const elapsed = Date.now() - startRef.current;
     const pct = Math.min(elapsed / 2000, 1);
     setProgress(pct);
-    if (pct >= 1) {
-      setHolding(false);
-      setProgress(0);
-      triggerSOS();
-      return;
-    }
+    if (pct >= 1) { setHolding(false); setProgress(0); triggerSOS(); return; }
     frameRef.current = requestAnimationFrame(animate);
   }, [triggerSOS]);
 
   const handleDown = () => {
     if (triggered || sending || cooldown > 0) return;
-    // C11: Don't allow SOS without location
-    if (!locAvailable) {
-      toast.error("Enable location to use SOS", { duration: 3000 });
-      return;
-    }
-    setHolding(true);
-    startRef.current = Date.now();
-    frameRef.current = requestAnimationFrame(animate);
+    if (!locAvailable) { toast.error("Enable location to use SOS", { duration: 3000 }); return; }
+    setHolding(true); startRef.current = Date.now(); frameRef.current = requestAnimationFrame(animate);
   };
+  const handleUp = () => { setHolding(false); setProgress(0); if (frameRef.current) cancelAnimationFrame(frameRef.current); };
 
-  const handleUp = () => {
-    setHolding(false);
-    setProgress(0);
-    if (frameRef.current) cancelAnimationFrame(frameRef.current);
-  };
-
-  // SVG progress ring
   const circumference = 2 * Math.PI * 90;
   const dashOffset = circumference * (1 - progress);
   const isDisabled = sending || cooldown > 0;
 
   return (
     <>
-      <RedDots />
       <div style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        flex: 1,
-        padding: "40px 20px",
-        position: "relative",
-        zIndex: 1,
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        flex: 1, padding: "40px 20px", position: "relative", zIndex: 1,
       }}>
+
         {/* Logo */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}

@@ -1,41 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import Logo from "@/components/Logo";
+import AnimatedBackground from "@/components/AnimatedBackground";
 
-function RedDots() {
-  const dots = useRef(
-    Array.from({ length: 30 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-      delay: Math.random() * 4,
-      size: 2 + Math.random() * 3,
-    }))
-  ).current;
-
-  return (
-    <div className="emergency-bg">
-      {dots.map((d) => (
-        <div
-          key={d.id}
-          className="emergency-dot"
-          style={{
-            left: `${d.left}%`,
-            top: `${d.top}%`,
-            width: d.size,
-            height: d.size,
-            animationDelay: `${d.delay}s`,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -155,7 +127,7 @@ export default function LoginPage() {
   return (
     <div style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
       <div className="login-bg" />
-      <RedDots />
+      <AnimatedBackground />
 
       <motion.div
         className="login-card"

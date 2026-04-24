@@ -1,25 +1,20 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 
-async function cleanUp() {
+async function clean() {
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY, {
     auth: { persistSession: false, autoRefreshToken: false }
   });
 
-  // 1. Delete alerts that contain picsum.photos to remove the old random images
-  const { data, error } = await supabase
-    .from('alerts')
-    .delete()
-    .like('message', '%picsum.photos%');
-    
-  console.log('Deleted old image alerts:', error || 'Success');
+  // Delete all triage results first (FK constraint)
+  const { error: e1 } = await supabase.from('triage_results').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  console.log('Triage cleanup:', e1 ? e1.message : 'OK');
 
-  // 2. Just to be safe, delete any other old demo alerts that might have 'picsum'
-  const { data: d2, error: e2 } = await supabase
-    .from('alerts')
-    .delete()
-    .like('message', '%MEDIA:%');
-
-  console.log('Deleted other media alerts:', e2 || 'Success');
+  // Delete all alerts
+  const { error: e2 } = await supabase.from('alerts').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+  console.log('Alerts cleanup:', e2 ? e2.message : 'OK');
+  
+  console.log('Database cleaned! Ready for fresh simulations.');
 }
-cleanUp();
+
+clean();

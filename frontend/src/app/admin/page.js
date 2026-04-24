@@ -106,6 +106,16 @@ export default function AdminPage() {
     setResources({ ambulances: 0, fire: 0, police: 0 });
   };
 
+  const handleSimulate = async () => {
+    try {
+      await apiFetch("/api/simulate/social", { method: "POST" });
+      toast.success("Simulated emergency alert generated!");
+      fetchAlerts();
+    } catch (err) {
+      toast.error(err.message || "Simulation failed");
+    }
+  };
+
   const tabs = [
     { id: "emergencies", label: "Emergencies", icon: "🚨", count: active },
     { id: "centre", label: "Community Feed", icon: "📡", count: sorted.filter(a => a.type === "social_post").length },
@@ -138,6 +148,19 @@ export default function AdminPage() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            onClick={handleSimulate}
+            style={{
+              background: "linear-gradient(135deg, rgba(255,45,45,0.15), rgba(255,45,45,0.05))",
+              border: "1px solid rgba(255,45,45,0.3)", borderRadius: 12,
+              padding: "8px 14px", fontSize: 11, color: "#ff6b6b",
+              cursor: "pointer", fontFamily: "inherit", fontWeight: 600,
+              display: "flex", alignItems: "center", gap: 6,
+              transition: "all 0.2s",
+            }}
+          >
+            ⚡ Simulate Alert
+          </button>
           <div style={{
             background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12,
             padding: "8px 14px", fontSize: 11, color: "var(--muted)", display: "flex", alignItems: "center", gap: 6,

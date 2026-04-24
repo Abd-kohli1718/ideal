@@ -1,32 +1,64 @@
 const { getServiceClient, broadcastAlert } = require('../services/supabase');
 const { runTriage } = require('../services/triageService');
-const { fetchRandomPublicPost } = require('../services/mastodonFeed');
-const { fetchRandomRedditPost } = require('../services/redditFeed');
 
 const BANGALORE_CENTER = { lat: 12.9716, lng: 77.5946 };
 
-// Realistic text-only emergency reports
+// Text-only emergency reports
 const TEXT_REPORTS = [
-  'Major accident on Outer Ring Road near Silk Board — multiple vehicles, people trapped, need ambulance urgently.',
-  'Fire broke out in a commercial building on MG Road, thick smoke visible from Brigade Road side.',
-  'Someone collapsed at the metro station platform, not breathing properly, please send medical help.',
-  'Large crowd disturbance near college gate, possible fight, police needed immediately.',
-  'Gas smell very strong in the apartment basement, worried about leak, need fire department.',
-  'Tree fallen on road blocking traffic near Ulsoor, injured pedestrians reported.',
-  'Flooding on the underpass after heavy rain, car stuck with people inside, rescue team needed.',
-  'Loud explosion heard near industrial area, not sure what it is, sending this for help.',
-  'Child missing near park playground for 30 minutes, need police assistance to coordinate search.',
-  'Power lines sparking on the street after storm, risk of fire, stay clear and send emergency crew.',
-  'Building tilting dangerously after heavy rains in Majestic area. Residents evacuated. Structural engineers needed.',
-  'Chemical spill at factory in Peenya Industrial Area. Strong fumes spreading. Hazmat team required immediately.',
-  'Elderly person found unconscious on footpath near Cubbon Park. No ID found. Need ambulance and police.',
-  'Landslide blocking Mysore Road after continuous rainfall. Several vehicles stranded. NDRF team requested.',
-  'Gas leak detected in apartment complex in Indiranagar. Strong odor spreading to 3 floors. Residents evacuating. Fire department has been alerted and is en route.',
-  'Massive pile-up on the highway near Hosur road. At least 8 vehicles involved. Multiple injuries reported. Ambulances needed.',
-  'Fire in electrical substation near Jayanagar causing power outage across 5 blocks. Sparks visible. BESCOM notified.',
-  'Drunk driver crashed into roadside stalls near Shivajinagar. 2 bystanders injured. Police and ambulance requested.',
-  'Heavy flooding in Bellandur area. Water entering ground floor apartments. Residents stranded on upper floors. Rescue boats needed.',
-  'Suspicious package found near Majestic bus stand. Area being cordoned off. Bomb squad requested.',
+  { message: 'Major accident on Outer Ring Road near Silk Board — multiple vehicles, people trapped, need ambulance urgently.', severity: 'high' },
+  { message: 'Fire broke out in a commercial building on MG Road, thick smoke visible from Brigade Road side.', severity: 'high' },
+  { message: 'Someone collapsed at the metro station platform, not breathing properly, please send medical help.', severity: 'medium' },
+  { message: 'Large crowd disturbance near college gate, possible fight, police needed immediately.', severity: 'medium' },
+  { message: 'Gas smell very strong in the apartment basement, worried about leak, need fire department.', severity: 'medium' },
+  { message: 'Tree fallen on road blocking traffic near Ulsoor, injured pedestrians reported.', severity: 'low' },
+  { message: 'Flooding on the underpass after heavy rain, car stuck with people inside, rescue team needed.', severity: 'high' },
+  { message: 'Power lines sparking on the street after storm, risk of fire, stay clear and send emergency crew.', severity: 'medium' },
+  { message: 'Building tilting dangerously after heavy rains in Majestic area. Residents evacuated. Structural engineers needed.', severity: 'high' },
+  { message: 'Chemical spill at factory in Peenya Industrial Area. Strong fumes spreading. Hazmat team required immediately.', severity: 'high' },
+  { message: 'Elderly person found unconscious on footpath near Cubbon Park. No ID found. Need ambulance and police.', severity: 'medium' },
+  { message: 'Landslide blocking Mysore Road after continuous rainfall. Several vehicles stranded. NDRF team requested.', severity: 'high' },
+  { message: 'Drunk driver crashed into roadside stalls near Shivajinagar. 2 bystanders injured. Police and ambulance requested.', severity: 'medium' },
+  { message: 'Heavy flooding in Bellandur area. Water entering ground floor apartments. Residents stranded on upper floors. Rescue boats needed.', severity: 'high' },
+  { message: 'Suspicious package found near Majestic bus stand. Area being cordoned off. Bomb squad requested.', severity: 'high' },
+  { message: 'Minor road accident near Huda City Centre. Two vehicles involved, no major injuries reported. Traffic diverted.', severity: 'low' },
+  { message: 'Child missing near park playground for 30 minutes, need police assistance to coordinate search.', severity: 'medium' },
+  { message: 'Road cave-in on Hosur Main Road after water pipeline burst. Traffic completely blocked. Municipal workers dispatched.', severity: 'low' },
+];
+
+// Image reports using REAL disaster images from CrisisMMD dataset (uploaded to Supabase Storage)
+const IMAGE_REPORTS = [
+  {
+    message: '[MEDIA:https://xalulznuowuijzpmevma.supabase.co/storage/v1/object/public/media/disasters/wildfire_1776992268473_qilh.jpg] Wildfire spreading rapidly near residential areas. Thick smoke covering the sky. Evacuation orders issued for nearby neighborhoods. Fire department deploying all available units.',
+    severity: 'high',
+  },
+  {
+    message: '[MEDIA:https://xalulznuowuijzpmevma.supabase.co/storage/v1/object/public/media/disasters/wildfire_1776992268944_8fw2.jpg] Massive wildfire damage reported in the outskirts. Several structures destroyed. Firefighters struggling to contain the blaze due to strong winds. Additional resources requested.',
+    severity: 'high',
+  },
+  {
+    message: '[MEDIA:https://xalulznuowuijzpmevma.supabase.co/storage/v1/object/public/media/disasters/hurricane_1776992269406_ekc0.jpg] Severe storm damage across multiple neighborhoods. Rooftops torn off, trees uprooted, power lines down. Emergency shelters being set up. Rescue teams deployed.',
+    severity: 'high',
+  },
+  {
+    message: '[MEDIA:https://xalulznuowuijzpmevma.supabase.co/storage/v1/object/public/media/disasters/hurricane_1776992269793_snol.jpg] Hurricane aftermath — widespread destruction visible. Multiple buildings damaged, debris scattered across roads. Emergency services coordinating relief operations.',
+    severity: 'high',
+  },
+  {
+    message: '[MEDIA:https://xalulznuowuijzpmevma.supabase.co/storage/v1/object/public/media/disasters/flood_1776992270121_ygqp.jpg] Severe flooding reported after continuous heavy rainfall. Streets submerged, vehicles stranded. Residents evacuating to higher ground. Army rescue teams called in.',
+    severity: 'high',
+  },
+  {
+    message: '[MEDIA:https://xalulznuowuijzpmevma.supabase.co/storage/v1/object/public/media/disasters/earthquake_1776992270622_y4i5.jpg] Earthquake damage — partial building collapse in the commercial district. Rubble on streets. Search and rescue operations underway for trapped individuals.',
+    severity: 'high',
+  },
+  {
+    message: '[MEDIA:https://xalulznuowuijzpmevma.supabase.co/storage/v1/object/public/media/disasters/earthquake_1776992270925_xxl4.jpg] Earthquake aftermath: structural damage to multiple buildings. Cracks visible on walls. Residents evacuated as safety inspections begin. Medical teams on standby.',
+    severity: 'medium',
+  },
+  {
+    message: '[MEDIA:https://xalulznuowuijzpmevma.supabase.co/storage/v1/object/public/media/disasters/hurricane_1776992271244_gfiy.jpg] Major storm devastation in coastal area. Infrastructure severely damaged. Communication lines down. Emergency relief operations in progress.',
+    severity: 'high',
+  },
 ];
 
 function randomNearBangalore() {
@@ -43,14 +75,13 @@ function randomNearBangalore() {
  * to satisfy the alerts.user_id foreign key constraint.
  */
 async function ensureUserExists(supabase, user) {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('users')
     .select('id')
     .eq('id', user.id)
     .maybeSingle();
 
   if (!data) {
-    // User doesn't exist in public.users — insert them
     const email = user.email || `unknown-${user.id}@domain.com`;
     const full_name = user.user_metadata?.full_name || user.user_metadata?.name || null;
     const role = user.user_metadata?.role || 'citizen';
@@ -64,8 +95,6 @@ async function ensureUserExists(supabase, user) {
 
     if (insertErr) {
       console.error('ensureUserExists: insert failed', insertErr);
-      // Don't throw immediately, it might have been created concurrently
-      // The alert insert will fail with a clearer foreign key error if it really failed
     }
   }
 }
@@ -74,7 +103,6 @@ async function createAndTriage(req, { type, message, severity }) {
   const supabase = getServiceClient();
   const coords = randomNearBangalore();
 
-  // FIX: Ensure user exists in public.users before inserting alert
   await ensureUserExists(supabase, req.user);
 
   const { data: inserted, error: insErr } = await supabase
@@ -130,65 +158,20 @@ async function createAndTriage(req, { type, message, severity }) {
 
 async function simulateSocial(req, res) {
   try {
-    const src = req.query.source || req.body?.source || 'auto';
-
     let message;
     let severity;
-    /** @type {Record<string, unknown>} */
     let simulationMeta = { source: 'demo' };
 
-    async function tryReddit() {
-      try {
-        const post = await fetchRandomRedditPost();
-        if (!post) return false;
-        message = post.text;
-        simulationMeta = {
-          source: 'reddit',
-          subreddit: post.subreddit,
-          permalink: post.permalink,
-          author: post.author,
-        };
-        return true;
-      } catch (err) {
-        console.warn('simulateSocial: Reddit failed', err.message);
-        return false;
-      }
-    }
-
-    async function tryMastodon() {
-      try {
-        const post = await fetchRandomPublicPost();
-        if (!post) return false;
-        message = post.text;
-        simulationMeta = {
-          source: 'mastodon',
-          author: post.author,
-          statusUrl: post.statusUrl,
-          instance: post.instance,
-        };
-        return true;
-      } catch (err) {
-        console.warn('simulateSocial: Mastodon failed', err.message);
-        return false;
-      }
-    }
-
-    if (src === 'demo') {
-      // use demo text only
-    } else if (src === 'reddit') {
-      await tryReddit();
-    } else if (src === 'mastodon') {
-      await tryMastodon();
+    // 50% chance image report, 50% text-only — all using REAL disaster data
+    if (Math.random() < 0.5) {
+      const imgReport = IMAGE_REPORTS[Math.floor(Math.random() * IMAGE_REPORTS.length)];
+      message = imgReport.message;
+      severity = imgReport.severity;
+      simulationMeta = { source: 'crisisMMD', type: 'image_report' };
     } else {
-      // auto: Reddit -> Mastodon -> demo
-      if (!(await tryReddit())) {
-        await tryMastodon();
-      }
-    }
-
-    // If no external source produced a message, pick a random text-only demo
-    if (!message) {
-      message = TEXT_REPORTS[Math.floor(Math.random() * TEXT_REPORTS.length)];
+      const textReport = TEXT_REPORTS[Math.floor(Math.random() * TEXT_REPORTS.length)];
+      message = textReport.message;
+      severity = textReport.severity;
       simulationMeta = { source: 'demo', type: 'text_report' };
     }
 

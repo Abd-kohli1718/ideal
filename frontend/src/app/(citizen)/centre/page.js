@@ -115,21 +115,10 @@ export default function CentrePage() {
     }
   };
 
-  // Simulate social post
-  const handleSimulate = async () => {
-    try {
-      await apiFetch("/api/simulate/social", { method: "POST" });
-      toast.success("Simulated emergency post added!");
-      fetchPosts();
-    } catch (err) {
-      toast.error(err.message || "Simulation failed");
-    }
-  };
-
-  // Filter and sort by votes
+  // Filter and sort by recency
   const filteredPosts = posts
     .filter((p) => filter === "all" || p.severity === filter)
-    .sort((a, b) => (b.votes || 0) - (a.votes || 0));
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
   return (
     <div style={{ padding: "16px 16px 20px", maxWidth: 500, margin: "0 auto" }}>
@@ -143,16 +132,6 @@ export default function CentrePage() {
           <div>
             <h2 style={{ fontSize: 20, fontWeight: 700 }}>ResQ Centre</h2>
             <p style={{ fontSize: 12, color: "var(--muted)" }}>Community emergency feed</p>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <motion.button
-              className="btn btn-secondary"
-              onClick={handleSimulate}
-              style={{ fontSize: 11, padding: "8px 12px" }}
-              whileTap={{ scale: 0.95 }}
-            >
-              ⚡ Simulate
-            </motion.button>
           </div>
         </div>
 

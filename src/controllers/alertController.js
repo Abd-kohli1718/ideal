@@ -39,7 +39,7 @@ async function createAlert(req, res) {
       .maybeSingle();
 
     if (!userExists) {
-      const email = req.user.email || 'unknown@domain.com';
+      const email = req.user.email || `unknown-${req.user.id}@domain.com`;
       const full_name = req.user.user_metadata?.full_name || req.user.user_metadata?.name || null;
       const role = req.user.user_metadata?.role || 'citizen';
       await supabase.from('users').upsert({

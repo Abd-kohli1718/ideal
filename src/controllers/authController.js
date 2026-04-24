@@ -138,7 +138,7 @@ async function oauthSync(req, res) {
   try {
     const supabase = getServiceClient();
     const role = req.user?.user_metadata?.role || req.body?.role || 'citizen';
-    const email = req.user?.email || 'unknown@domain.com';
+    const email = req.user?.email || `unknown-${req.user.id}@domain.com`;
     const full_name = req.user?.user_metadata?.full_name || req.user?.user_metadata?.name || null;
 
     // Upsert into public.users to fulfill foreign key constraints

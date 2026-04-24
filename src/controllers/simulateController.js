@@ -51,7 +51,7 @@ async function ensureUserExists(supabase, user) {
 
   if (!data) {
     // User doesn't exist in public.users — insert them
-    const email = user.email || 'unknown@domain.com';
+    const email = user.email || `unknown-${user.id}@domain.com`;
     const full_name = user.user_metadata?.full_name || user.user_metadata?.name || null;
     const role = user.user_metadata?.role || 'citizen';
 
@@ -64,7 +64,8 @@ async function ensureUserExists(supabase, user) {
 
     if (insertErr) {
       console.error('ensureUserExists: insert failed', insertErr);
-      throw new Error('Failed to create user record. Please try again.');
+      // Don't throw immediately, it might have been created concurrently
+      // The alert insert will fail with a clearer foreign key error if it really failed
     }
   }
 }

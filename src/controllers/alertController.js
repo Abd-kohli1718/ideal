@@ -30,6 +30,26 @@ async function createAlert(req, res) {
 
   try {
     const supabase = getServiceClient();
+
+    // Ensure user exists in public.users (fixes foreign key constraint)
+    const { data: userExists } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', req.user.id)
+      .maybeSingle();
+
+    if (!userExists) {
+      const email = req.user.email || 'unknown@domain.com';
+      const full_name = req.user.user_metadata?.full_name || req.user.user_metadata?.name || null;
+      const role = req.user.user_metadata?.role || 'citizen';
+      await supabase.from('users').upsert({
+        id: req.user.id,
+        email,
+        full_name,
+        role,
+      }, { onConflict: 'id' });
+    }
+
     const { data: inserted, error: insErr } = await supabase
       .from('alerts')
       .insert({

@@ -21,34 +21,12 @@ const TEXT_REPORTS = [
   'Chemical spill at factory in Peenya Industrial Area. Strong fumes spreading. Hazmat team required immediately.',
   'Elderly person found unconscious on footpath near Cubbon Park. No ID found. Need ambulance and police.',
   'Landslide blocking Mysore Road after continuous rainfall. Several vehicles stranded. NDRF team requested.',
-];
-
-// Image-based emergency reports (with picsum.photos - guaranteed working)
-const IMAGE_REPORTS = [
-  {
-    message: '[MEDIA:https://picsum.photos/id/1058/600/400] Massive fire engulfing commercial complex in JP Nagar. Flames visible from kilometers away. Multiple fire tenders dispatched. Evacuations underway.',
-    severity: 'high',
-  },
-  {
-    message: '[MEDIA:https://picsum.photos/id/274/600/400] Severe waterlogging in Koramangala after 4 hours of continuous rainfall. Water level crossing 3 feet on main road. Multiple vehicles submerged.',
-    severity: 'high',
-  },
-  {
-    message: '[MEDIA:https://picsum.photos/id/1040/600/400] Partial building collapse reported near Majestic bus terminal. Debris on roadway. No casualties confirmed yet but rescue teams searching.',
-    severity: 'high',
-  },
-  {
-    message: '[MEDIA:https://picsum.photos/id/1039/600/400] Gas leak from pipeline near residential apartments in Indiranagar. Strong chemical odor. Fire department on scene, residents evacuating 3 blocks.',
-    severity: 'medium',
-  },
-  {
-    message: '[MEDIA:https://picsum.photos/id/1036/600/400] Multi-vehicle pile-up on NICE Road during fog. At least 5 cars and 2 trucks involved. Ambulances rushing to scene. Traffic diverted.',
-    severity: 'high',
-  },
-  {
-    message: '[MEDIA:https://picsum.photos/id/1015/600/400] Heavy storm damage in Whitefield area. Trees uprooted, power lines down across multiple streets. BESCOM teams working to restore power.',
-    severity: 'medium',
-  },
+  'Gas leak detected in apartment complex in Indiranagar. Strong odor spreading to 3 floors. Residents evacuating. Fire department has been alerted and is en route.',
+  'Massive pile-up on the highway near Hosur road. At least 8 vehicles involved. Multiple injuries reported. Ambulances needed.',
+  'Fire in electrical substation near Jayanagar causing power outage across 5 blocks. Sparks visible. BESCOM notified.',
+  'Drunk driver crashed into roadside stalls near Shivajinagar. 2 bystanders injured. Police and ambulance requested.',
+  'Heavy flooding in Bellandur area. Water entering ground floor apartments. Residents stranded on upper floors. Rescue boats needed.',
+  'Suspicious package found near Majestic bus stand. Area being cordoned off. Bomb squad requested.',
 ];
 
 function randomNearBangalore() {
@@ -60,9 +38,43 @@ function randomNearBangalore() {
   };
 }
 
+/**
+ * Ensure the authenticated user exists in public.users table
+ * to satisfy the alerts.user_id foreign key constraint.
+ */
+async function ensureUserExists(supabase, user) {
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!data) {
+    // User doesn't exist in public.users — insert them
+    const email = user.email || 'unknown@domain.com';
+    const full_name = user.user_metadata?.full_name || user.user_metadata?.name || null;
+    const role = user.user_metadata?.role || 'citizen';
+
+    const { error: insertErr } = await supabase.from('users').upsert({
+      id: user.id,
+      email,
+      full_name,
+      role,
+    }, { onConflict: 'id' });
+
+    if (insertErr) {
+      console.error('ensureUserExists: insert failed', insertErr);
+      throw new Error('Failed to create user record. Please try again.');
+    }
+  }
+}
+
 async function createAndTriage(req, { type, message, severity }) {
   const supabase = getServiceClient();
   const coords = randomNearBangalore();
+
+  // FIX: Ensure user exists in public.users before inserting alert
+  await ensureUserExists(supabase, req.user);
 
   const { data: inserted, error: insErr } = await supabase
     .from('alerts')
@@ -173,18 +185,10 @@ async function simulateSocial(req, res) {
       }
     }
 
-    // If no external source produced a message, pick a random demo
+    // If no external source produced a message, pick a random text-only demo
     if (!message) {
-      // 40% chance of image report, 60% text-only
-      if (Math.random() < 0.4) {
-        const imgReport = IMAGE_REPORTS[Math.floor(Math.random() * IMAGE_REPORTS.length)];
-        message = imgReport.message;
-        severity = imgReport.severity;
-        simulationMeta = { source: 'demo', type: 'image_report' };
-      } else {
-        message = TEXT_REPORTS[Math.floor(Math.random() * TEXT_REPORTS.length)];
-        simulationMeta = { source: 'demo', type: 'text_report' };
-      }
+      message = TEXT_REPORTS[Math.floor(Math.random() * TEXT_REPORTS.length)];
+      simulationMeta = { source: 'demo', type: 'text_report' };
     }
 
     const data = await createAndTriage(req, { type: 'social_post', message, severity });

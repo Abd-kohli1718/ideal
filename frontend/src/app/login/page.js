@@ -59,39 +59,93 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
+      const { getSupabaseBrowser } = await import("@/lib/supabase");
+      const supabase = getSupabaseBrowser();
+
       if (mode === "signup") {
-        const res = await apiFetch("/api/auth/signup", {
-          method: "POST",
-          body: JSON.stringify({ email, password, full_name: fullName, role: "citizen" }),
+        // Sign up via Supabase client
+        const { data, error: signupErr } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: fullName || null, role: "citizen" },
+          },
         });
-        const { user: u, session } = res.data;
+
+        if (signupErr) {
+          if (signupErr.message?.includes("already registered")) {
+            setError("An account with this email already exists. Please sign in.");
+            setMode("login");
+          } else {
+            setError(signupErr.message);
+          }
+          return;
+        }
+
+        const session = data?.session;
+        const user = data?.user;
+
         if (session?.access_token) {
           localStorage.setItem("resq_token", session.access_token);
-          localStorage.setItem("resq_user", JSON.stringify(u));
+          localStorage.setItem("resq_refresh_token", session.refresh_token || "");
+          localStorage.setItem("resq_user", JSON.stringify(user));
           localStorage.setItem("resq_role", "citizen");
           document.cookie = `resq_role=citizen; path=/; max-age=${60 * 60 * 24 * 7}`;
           document.cookie = `resq_authed=1; path=/; max-age=${60 * 60 * 24 * 7}`;
+
+          // Sync user to backend
+          try {
+            await apiFetch("/api/auth/oauth-sync", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${session.access_token}` },
+              body: JSON.stringify({ role: "citizen" }),
+            });
+          } catch {}
+
           router.push("/centre");
         } else {
           setMode("login");
           setError("Account created! Check your email to confirm, then sign in.");
         }
       } else {
-        const res = await apiFetch("/api/auth/login", {
-          method: "POST",
-          body: JSON.stringify({ email, password }),
+        // Login via Supabase client
+        const { data, error: loginErr } = await supabase.auth.signInWithPassword({
+          email,
+          password,
         });
-        const { access_token, user: u } = res.data;
-        const userRole = u?.user_metadata?.role || "citizen";
-        localStorage.setItem("resq_token", access_token);
-        localStorage.setItem("resq_user", JSON.stringify(u));
+
+        if (loginErr) {
+          if (loginErr.message?.includes("Invalid login")) {
+            setError("Invalid email or password. If you signed up with Google, use the Google button below.");
+          } else {
+            setError(loginErr.message);
+          }
+          return;
+        }
+
+        const session = data?.session;
+        const user = data?.user;
+        const userRole = user?.user_metadata?.role || "citizen";
+
+        localStorage.setItem("resq_token", session.access_token);
+        localStorage.setItem("resq_refresh_token", session.refresh_token || "");
+        localStorage.setItem("resq_user", JSON.stringify(user));
         localStorage.setItem("resq_role", userRole);
         document.cookie = `resq_role=${userRole}; path=/; max-age=${60 * 60 * 24 * 7}`;
         document.cookie = `resq_authed=1; path=/; max-age=${60 * 60 * 24 * 7}`;
+
+        // Sync user to backend
+        try {
+          await apiFetch("/api/auth/oauth-sync", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            body: JSON.stringify({ role: userRole }),
+          });
+        } catch {}
+
         router.push(userRole === "citizen" ? "/centre" : `/${userRole}`);
       }
     } catch (err) {
-      if (err.code === "AUTH_EXPIRED") return;
       setError(err.message || "Something went wrong");
     } finally {
       setLoading(false);

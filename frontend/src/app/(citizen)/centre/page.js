@@ -8,54 +8,7 @@ import CreatePost from "@/components/CreatePost";
 import FilterPills from "@/components/FilterPills";
 import toast from "react-hot-toast";
 
-// Mock posts for initial display (until backend media support is added)
-const MOCK_POSTS = [
-  {
-    id: "mock-1",
-    caption: "Building collapsed near MG Road metro station. Multiple people trapped. Emergency services needed immediately!",
-    severity: "high",
-    type: "social_post",
-    location: "MG Road, Bengaluru",
-    votes: 47,
-    comments: 12,
-    created_at: new Date(Date.now() - 1000 * 60 * 15).toISOString(),
-    media_url: null,
-  },
-  {
-    id: "mock-2",
-    caption: "Severe waterlogging on NH-48 near Electronic City flyover. Vehicles stranded, water level rising fast.",
-    severity: "high",
-    type: "social_post",
-    location: "Electronic City, Bengaluru",
-    votes: 32,
-    comments: 8,
-    created_at: new Date(Date.now() - 1000 * 60 * 45).toISOString(),
-    media_url: null,
-  },
-  {
-    id: "mock-3",
-    caption: "Gas leak reported in residential area, Sector 15. Strong smell, residents evacuating. Fire department alerted.",
-    severity: "medium",
-    type: "social_post",
-    location: "Sector 15, Noida",
-    votes: 18,
-    comments: 5,
-    created_at: new Date(Date.now() - 1000 * 60 * 120).toISOString(),
-    media_url: null,
-  },
-  {
-    id: "mock-4",
-    caption: "Minor road accident near Huda City Centre. Two vehicles involved, no major injuries reported. Traffic diverted.",
-    severity: "low",
-    type: "social_post",
-    location: "Huda City Centre, Gurugram",
-    votes: 6,
-    comments: 2,
-    created_at: new Date(Date.now() - 1000 * 60 * 200).toISOString(),
-    media_url: null,
-  },
-];
-
+// No mock data — only real alerts from the backend
 const FILTER_OPTIONS = [
   { label: "All", value: "all" },
   { label: "🔴 Critical", value: "high" },
@@ -68,7 +21,7 @@ export default function CentrePage() {
   const [filter, setFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
 
-  // Load real alerts from backend and merge with mocks
+  // Load real alerts from backend
   const fetchPosts = useCallback(async () => {
     try {
       const res = await apiFetch("/api/alerts");
@@ -103,11 +56,9 @@ export default function CentrePage() {
           media_type,
         };
       });
-      // If we got real data, use it; otherwise fall back to mocks
-      setPosts(realPosts.length > 0 ? realPosts : MOCK_POSTS);
+      setPosts(realPosts);
     } catch {
-      // On auth failure or network error, show mock data so page isn't empty
-      setPosts(MOCK_POSTS);
+      setPosts([]);
     }
   }, []);
 
@@ -214,7 +165,12 @@ export default function CentrePage() {
         {filteredPosts.length === 0 && (
           <div style={{ textAlign: "center", padding: 40, color: "var(--muted)" }}>
             <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.4 }}>📡</div>
-            <p style={{ fontSize: 13 }}>No posts match your filter</p>
+            <p style={{ fontSize: 13, marginBottom: 6 }}>
+              {filter !== "all" ? "No posts match your filter" : "No emergency reports yet"}
+            </p>
+            <p style={{ fontSize: 11, opacity: 0.7 }}>
+              Hit ⚡ Simulate to generate demo alerts or use + to report
+            </p>
           </div>
         )}
         {filteredPosts.map((post, i) => (

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 import { getSupabaseBrowser } from "@/lib/supabase";
+import toast from "react-hot-toast";
 
 function timeLabel(d) {
   if (!d) return "";
@@ -101,6 +102,7 @@ export default function ChatPanel({ alertId, currentUserId, onClose }) {
       inputRef.current?.focus();
     } catch (err) {
       console.error("Send failed:", err);
+      toast.error(err.message || "Failed to send message");
     } finally {
       setSending(false);
     }

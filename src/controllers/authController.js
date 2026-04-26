@@ -137,9 +137,19 @@ async function logout(req, res) {
 async function oauthSync(req, res) {
   try {
     const supabase = getServiceClient();
-    const role = req.user?.user_metadata?.role || req.body?.role || 'citizen';
+    
+    // Prioritize the role they explicitly requested during login/signup via the portal
+    const role = req.body?.role || req.user?.user_metadata?.role || 'citizen';
+    
     const email = req.user?.email || `unknown-${req.user.id}@domain.com`;
     const full_name = req.user?.user_metadata?.full_name || req.user?.user_metadata?.name || null;
+
+    // Update their user_metadata so their token contains the correct role going forward
+    if (req.user?.user_metadata?.role !== role) {
+      await supabase.auth.admin.updateUserById(req.user.id, {
+        user_metadata: { role }
+      });
+    }
 
     // Upsert into public.users to fulfill foreign key constraints
     const { error } = await supabase.from('users').upsert({

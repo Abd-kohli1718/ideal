@@ -21,17 +21,53 @@ export default function SOSHomePage() {
   const frameRef = useRef(null);
   const cooldownRef = useRef(null);
 
+  const [locationDenied, setLocationDenied] = useState(false);
+
   useEffect(() => {
-    if (navigator.geolocation) {
+    async function requestLocation() {
+      if (!navigator.geolocation) {
+        setLocStatus("Geolocation not supported");
+        setLocAvailable(false);
+        return;
+      }
+
+      // Check permission status first
+      try {
+        if (navigator.permissions) {
+          const perm = await navigator.permissions.query({ name: 'geolocation' });
+          if (perm.state === 'denied') {
+            setLocStatus("Location blocked — tap to enable in settings");
+            setLocAvailable(false);
+            setLocationDenied(true);
+            // Listen for permission change (user re-enables in settings)
+            perm.onchange = () => {
+              if (perm.state === 'granted' || perm.state === 'prompt') {
+                setLocationDenied(false);
+                requestLocation();
+              }
+            };
+            return;
+          }
+        }
+      } catch {}
+
+      // Always request — this will prompt if permission is 'prompt'
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           setUserPos({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
           setLocStatus(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
           setLocAvailable(true);
+          setLocationDenied(false);
         },
-        () => { setLocStatus("Location unavailable — enable GPS for SOS"); setLocAvailable(false); }
+        () => {
+          setLocStatus("Location unavailable — enable GPS for SOS");
+          setLocAvailable(false);
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
       );
-    } else { setLocStatus("Geolocation not supported"); setLocAvailable(false); }
+    }
+
+    requestLocation();
   }, []);
 
   useEffect(() => { return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); }; }, []);

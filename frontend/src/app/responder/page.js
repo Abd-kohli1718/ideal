@@ -27,7 +27,7 @@ const SEV_CONFIG = {
 const RESP_ICONS = { fire: "🔥", ambulance: "🚑", police: "🚔", rescue: "⛑️", unknown: "📋" };
 
 function parseMedia(message) {
-  const mediaRegex = /\[MEDIA:(https?:\/\/[^\]]+)\]/g;
+  const mediaRegex = /\[MEDIA:([^\]]+)\]/g;
   const urls = [];
   let match;
   while ((match = mediaRegex.exec(message)) !== null) urls.push(match[1]);

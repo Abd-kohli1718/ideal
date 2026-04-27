@@ -53,29 +53,28 @@ export default function CentrePage() {
         let media_type = "image";
         const m = msg.match(/\[MEDIA:(.*?)\]/);
         if (m) { media_url = m[1]; msg = msg.replace(m[0], "").trim(); }
-        if (media_url?.includes(".mp4")) media_type = "video";
-        else if (media_url?.includes("audio")) media_type = "audio";
+        // Local /simulation/ paths work as relative URLs from Next.js public/
+        if (media_url?.match(/\.(mp4|webm|mov)$/i)) media_type = "video";
+        else if (media_url?.match(/\.(mp3|wav|ogg|webm|m4a)$/i) || media_url?.includes("audio")) media_type = "audio";
 
-        // Check if this is a simulated post (has [MEDIA:] tag with unsplash URL = simulated)
-        const isSimulated = a.type === "social_post" && media_url && media_url.includes("unsplash.com");
-        // Check if this is user's own post
+        // Simulated = fake user (@resq.sim) or has simulation_progress
+        const isSimulated = a.simulation_progress || (a.user_name && !currentUser) || (a.user_id && currentUser && a.user_id !== currentUser.id && a.type === "social_post");
         const isOwnPost = currentUser && a.user_id === currentUser.id;
 
         return {
           id: a.id, caption: msg,
           severity: a.triage_result?.severity || a.severity || "low",
           type: a.type,
-          // Show location only if available, don't fake it
           location: a.latitude ? `${Number(a.latitude).toFixed(3)}, ${Number(a.longitude).toFixed(3)}` : null,
           locationOff: !a.latitude,
-          // Simulated posts get hash votes, user posts start fresh at 0
-          votes: isSimulated ? hashVotes(a.id) : 0,
-          comments: isSimulated ? hashComments(a.id) : 0,
+          votes: isOwnPost ? 0 : hashVotes(a.id),
+          comments: isOwnPost ? 0 : hashComments(a.id),
           created_at: a.created_at, media_url, media_type,
-          isSimulated,
+          isSimulated: !isOwnPost,
           isOwnPost,
           user_id: a.user_id,
           sender_name: a.user_name || null,
+          progress: a.simulation_progress || null,
         };
       }));
     } catch { setPosts([]); }

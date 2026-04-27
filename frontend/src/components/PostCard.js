@@ -133,7 +133,40 @@ export default function PostCard({ post, index = 0, onVote }) {
           </div>
         )}
 
-        {/* Actions — simulated posts get upvote button, user posts show "Just sent" */}
+        {/* Progress bar — for simulated/past posts only */}
+        {isSimulated && !isOwnPost && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 10, fontWeight: 600, color: "var(--text2)" }}>
+                Response Progress
+              </span>
+              <span style={{
+                fontSize: 10, fontWeight: 700,
+                color: (post.progress?.progress || 50) >= 100 ? "#4cd17f" : sevColor,
+              }}>
+                {post.progress?.progress || Math.abs((post.id?.charCodeAt?.(0) || 50) % 85) + 15}%
+              </span>
+            </div>
+            <div style={{
+              width: "100%", height: 6, borderRadius: 3,
+              background: "var(--surface2)", overflow: "hidden",
+            }}>
+              <div style={{
+                width: `${post.progress?.progress || Math.abs((post.id?.charCodeAt?.(0) || 50) % 85) + 15}%`,
+                height: "100%", borderRadius: 3,
+                background: (post.progress?.progress || 50) >= 100
+                  ? "linear-gradient(90deg, #4cd17f, #86efac)"
+                  : `linear-gradient(90deg, ${sevColor}, ${sevColor}aa)`,
+                transition: "width 0.8s ease",
+              }} />
+            </div>
+            <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 4 }}>
+              {post.progress?.label || "Response team dispatched — situation being assessed"}
+            </div>
+          </div>
+        )}
+
+        {/* Actions */}
         <div className="post-actions">
           {isSimulated ? (
             <button
@@ -149,9 +182,9 @@ export default function PostCard({ post, index = 0, onVote }) {
             <div style={{
               display: "flex", alignItems: "center", gap: 6,
               padding: "4px 12px", borderRadius: 20,
-              background: isOwnPost ? "rgba(91,141,239,0.08)" : "rgba(167,139,250,0.08)",
+              background: "rgba(91,141,239,0.08)",
               fontSize: 11, fontWeight: 600,
-              color: isOwnPost ? "#5b8def" : "#a78bfa",
+              color: "#5b8def",
             }}>
               <span style={{ fontSize: 12 }}>📡</span>
               Sent to responders
@@ -165,3 +198,4 @@ export default function PostCard({ post, index = 0, onVote }) {
     </motion.div>
   );
 }
+

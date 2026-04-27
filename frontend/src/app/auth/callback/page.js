@@ -59,7 +59,21 @@ export default function AuthCallbackPage() {
         console.error("Failed to sync profile during OAuth callback:", err);
       }
 
-      // Persist session just like email/password login does
+      // For admin/responder: require access code before granting entry
+      if (role === "admin" || role === "responder") {
+        // Store pending session for access code verification on portal page
+        localStorage.setItem("resq_pending_oauth", JSON.stringify({
+          token: session.access_token,
+          user,
+          role,
+        }));
+        localStorage.removeItem("resq_oauth_role");
+        setStatus("Access code required. Redirecting…");
+        router.replace("/portal?verify=1");
+        return;
+      }
+
+      // Citizen: go straight through
       localStorage.setItem("resq_token", session.access_token);
       localStorage.setItem("resq_user", JSON.stringify(user));
       localStorage.setItem("resq_role", role);
@@ -70,7 +84,7 @@ export default function AuthCallbackPage() {
       localStorage.removeItem("resq_oauth_role");
 
       setStatus("Success! Redirecting…");
-      router.replace(role === "citizen" ? "/centre" : `/${role}`);
+      router.replace("/centre");
     }
 
     handleCallback();

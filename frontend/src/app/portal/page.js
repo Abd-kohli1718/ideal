@@ -26,6 +26,24 @@ export default function PortalPage() {
   const [accessCode, setAccessCode] = useState("");
   const [pendingSession, setPendingSession] = useState(null);
 
+  // Check for pending Google OAuth session that needs access code
+  useEffect(() => {
+    try {
+      const pending = localStorage.getItem("resq_pending_oauth");
+      if (pending) {
+        const parsed = JSON.parse(pending);
+        localStorage.removeItem("resq_pending_oauth");
+        setPendingSession({
+          token: parsed.token,
+          user: parsed.user,
+          role: parsed.role,
+          assignedRole: parsed.role,
+        });
+        setStep("access_code");
+      }
+    } catch {}
+  }, []);
+
   const handleAccessCodeVerify = () => {
     const expected = ACCESS_CODES[pendingSession.role];
     if (accessCode.trim().toUpperCase() !== expected) {

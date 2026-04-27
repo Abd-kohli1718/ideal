@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 import toast from "react-hot-toast";
 import AnimatedBackground from "@/components/AnimatedBackground";
+import ChatPanel from "@/components/ChatPanel";
 
 function timeAgo(d) {
   if (!d) return "";
@@ -78,8 +79,18 @@ export default function AdminPage() {
   const [alerts, setAlerts] = useState([]);
   const [tab, setTab] = useState("emergencies");
   const [expandedId, setExpandedId] = useState(null);
+  const [verifiedIds, setVerifiedIds] = useState(new Set());
   const [dispatchRes, setDispatchRes] = useState({ ambulances: 0, fire: 0, police: 0 });
   const [searchQuery, setSearchQuery] = useState("");
+  const [chatAlertId, setChatAlertId] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("resq_user");
+      if (saved) setCurrentUserId(JSON.parse(saved)?.id);
+    } catch {}
+  }, []);
 
   const fetchAlerts = useCallback(async () => {
     try {
@@ -294,40 +305,73 @@ export default function AdminPage() {
                           <SeverityChip severity={sev} />
                           <StatusChip status={a.status} />
                           <span style={{ fontSize: 10, color: "var(--muted)" }}>{timeAgo(a.created_at)}</span>
-                          {a.latitude && (
+                          {a.latitude ? (
                             <span style={{ fontSize: 10, color: "var(--muted)" }}>
                               📍 {Number(a.latitude).toFixed(3)}, {Number(a.longitude).toFixed(3)}
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic" }}>
+                              📍 Location off
                             </span>
                           )}
                         </div>
                       </div>
-                      <button
-                        onClick={() => setExpandedId(isExpanded ? null : a.id)}
-                        style={{
-                          background: isExpanded ? "rgba(255,45,45,0.1)" : "var(--surface2)",
-                          border: "1px solid var(--border)", borderRadius: 10,
-                          padding: "8px 14px", fontSize: 11, fontWeight: 600,
-                          color: isExpanded ? "#ff6b6b" : "var(--text2)",
-                          cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-                        }}
-                      >
-                        {isExpanded ? "Cancel" : "⚡ Dispatch"}
-                      </button>
+                      <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                        {!verifiedIds.has(a.id) ? (
+                          <button
+                            onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
+                            style={{
+                              background: expandedId === a.id ? "rgba(91,141,239,0.1)" : "var(--surface2)",
+                              border: "1px solid var(--border)", borderRadius: 10,
+                              padding: "8px 14px", fontSize: 11, fontWeight: 600,
+                              color: expandedId === a.id ? "#5b8def" : "var(--text2)",
+                              cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                            }}
+                          >
+                            {expandedId === a.id ? "Close" : "🔍 Verify"}
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
+                              style={{
+                                background: expandedId === a.id ? "rgba(255,45,45,0.1)" : "rgba(76,209,127,0.08)",
+                                border: `1px solid ${expandedId === a.id ? "rgba(255,45,45,0.2)" : "rgba(76,209,127,0.2)"}`,
+                                borderRadius: 10, padding: "8px 14px", fontSize: 11, fontWeight: 600,
+                                color: expandedId === a.id ? "#ff6b6b" : "#4cd17f",
+                                cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                              }}
+                            >
+                              {expandedId === a.id ? "Cancel" : "⚡ Deploy"}
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setChatAlertId(a.id); }}
+                              style={{
+                                background: "var(--surface2)", border: "1px solid var(--border)",
+                                borderRadius: 10, padding: "8px 10px", fontSize: 11,
+                                cursor: "pointer", fontFamily: "inherit",
+                              }}
+                            >
+                              💬
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Media preview */}
+                    {/* Media preview — always shown prominently */}
                     {mediaUrls.length > 0 && (
-                      <div style={{ display: "flex", gap: 8, marginTop: 12, overflowX: "auto" }}>
+                      <div style={{ marginTop: 12, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)" }}>
                         {mediaUrls.map((url, j) => (
                           <img key={j} src={url} alt="incident" style={{
-                            width: 120, height: 80, objectFit: "cover",
-                            borderRadius: 10, border: "1px solid var(--border)",
+                            width: "100%", maxHeight: 220, objectFit: "cover",
+                            display: "block",
                           }} />
                         ))}
                       </div>
                     )}
 
-                    {/* Dispatch panel */}
+                    {/* Expanded panel — Verify step or Deploy step */}
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
@@ -337,49 +381,70 @@ export default function AdminPage() {
                           style={{ overflow: "hidden" }}
                         >
                           <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
-                            <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 12, color: "var(--text)" }}>
-                              Assign Resources
-                            </p>
-                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
-                              {[
-                                { key: "ambulances", icon: "🚑", label: "Ambulances" },
-                                { key: "fire", icon: "🚒", label: "Fire Trucks" },
-                                { key: "police", icon: "🚔", label: "Police" },
-                              ].map(r => (
-                                <div key={r.key} style={{
-                                  background: "var(--surface2)", borderRadius: 12, padding: 12, textAlign: "center",
-                                  border: "1px solid var(--border)",
-                                }}>
-                                  <div style={{ fontSize: 22, marginBottom: 4 }}>{r.icon}</div>
-                                  <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 8, fontWeight: 500 }}>{r.label}</div>
-                                  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
-                                    <button onClick={() => setDispatchRes(p => ({ ...p, [r.key]: Math.max(0, p[r.key] - 1) }))} style={{
-                                      width: 28, height: 28, borderRadius: 8, border: "1px solid var(--border)",
-                                      background: "var(--surface)", color: "var(--text)", cursor: "pointer", fontSize: 14, fontWeight: 700,
-                                      display: "flex", alignItems: "center", justifyContent: "center",
-                                    }}>-</button>
-                                    <span style={{ fontSize: 18, fontWeight: 800, minWidth: 24, textAlign: "center", color: "var(--text)" }}>{dispatchRes[r.key]}</span>
-                                    <button onClick={() => setDispatchRes(p => ({ ...p, [r.key]: p[r.key] + 1 }))} style={{
-                                      width: 28, height: 28, borderRadius: 8, border: "1px solid var(--border)",
-                                      background: "var(--surface)", color: "var(--text)", cursor: "pointer", fontSize: 14, fontWeight: 700,
-                                      display: "flex", alignItems: "center", justifyContent: "center",
-                                    }}>+</button>
-                                  </div>
+                            {!verifiedIds.has(a.id) ? (
+                              /* === VERIFY STEP: Show full report === */
+                              <>
+                                <p style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: "#5b8def", display: "flex", alignItems: "center", gap: 6 }}>
+                                  🔍 Incident Verification Report
+                                </p>
+                                <div style={{ background: "var(--surface2)", borderRadius: 12, padding: 14, marginBottom: 12, fontSize: 12, lineHeight: 1.6 }}>
+                                  <div style={{ marginBottom: 8 }}><strong>Type:</strong> {a.type?.replace(/_/g, " ") || "Unknown"}</div>
+                                  <div style={{ marginBottom: 8 }}><strong>Severity:</strong> <span style={{ color: SEV_COLORS[sev]?.text }}>{SEV_COLORS[sev]?.label}</span></div>
+                                  <div style={{ marginBottom: 8 }}><strong>Response:</strong> {RESPONSE_ICONS[respType]} {respType}</div>
+                                  <div style={{ marginBottom: 8 }}><strong>Location:</strong> {a.latitude ? `${Number(a.latitude).toFixed(4)}, ${Number(a.longitude).toFixed(4)}` : "Location off"}</div>
+                                  <div><strong>AI Confidence:</strong> {a.triage_result ? "High (AI Triaged)" : "Pending review"}</div>
                                 </div>
-                              ))}
-                            </div>
-                            <button
-                              onClick={() => handleDispatch(a.id)}
-                              style={{
-                                width: "100%", padding: "12px 20px", borderRadius: 12,
-                                border: "none", cursor: "pointer", fontFamily: "inherit",
-                                fontSize: 13, fontWeight: 700, color: "#fff",
-                                background: "linear-gradient(135deg, #ff2d2d, #e60000)",
-                                boxShadow: "0 4px 16px rgba(255,45,45,0.3)",
-                              }}
-                            >
-                              Deploy to Responders
-                            </button>
+                                <button
+                                  onClick={() => { setVerifiedIds(prev => new Set([...prev, a.id])); toast.success("Incident verified ✓"); }}
+                                  style={{
+                                    width: "100%", padding: "12px 20px", borderRadius: 12,
+                                    border: "none", cursor: "pointer", fontFamily: "inherit",
+                                    fontSize: 13, fontWeight: 700, color: "#fff",
+                                    background: "linear-gradient(135deg, #5b8def, #3b5ec9)",
+                                    boxShadow: "0 4px 16px rgba(91,141,239,0.3)",
+                                  }}
+                                >
+                                  ✓ Verify Incident
+                                </button>
+                              </>
+                            ) : (
+                              /* === DEPLOY STEP: Resource assignment === */
+                              <>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                  <span style={{ fontSize: 10, fontWeight: 700, color: "#4cd17f", background: "rgba(76,209,127,0.1)", padding: "3px 10px", borderRadius: 20 }}>✓ VERIFIED</span>
+                                  <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", margin: 0 }}>Assign Resources</p>
+                                </div>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+                                  {[
+                                    { key: "ambulances", icon: "🚑", label: "Ambulances" },
+                                    { key: "fire", icon: "🚒", label: "Fire Trucks" },
+                                    { key: "police", icon: "🚔", label: "Police" },
+                                  ].map(r => (
+                                    <div key={r.key} style={{ background: "var(--surface2)", borderRadius: 12, padding: 12, textAlign: "center", border: "1px solid var(--border)" }}>
+                                      <div style={{ fontSize: 22, marginBottom: 4 }}>{r.icon}</div>
+                                      <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 8, fontWeight: 500 }}>{r.label}</div>
+                                      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                                        <button onClick={() => setDispatchRes(p => ({ ...p, [r.key]: Math.max(0, p[r.key] - 1) }))} style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>-</button>
+                                        <span style={{ fontSize: 18, fontWeight: 800, minWidth: 24, textAlign: "center", color: "var(--text)" }}>{dispatchRes[r.key]}</span>
+                                        <button onClick={() => setDispatchRes(p => ({ ...p, [r.key]: p[r.key] + 1 }))} style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                <button
+                                  onClick={() => handleDispatch(a.id)}
+                                  style={{
+                                    width: "100%", padding: "12px 20px", borderRadius: 12,
+                                    border: "none", cursor: "pointer", fontFamily: "inherit",
+                                    fontSize: 13, fontWeight: 700, color: "#fff",
+                                    background: "linear-gradient(135deg, #ff2d2d, #e60000)",
+                                    boxShadow: "0 4px 16px rgba(255,45,45,0.3)",
+                                  }}
+                                >
+                                  🚀 Deploy to Responders
+                                </button>
+                              </>
+                            )}
                           </div>
                         </motion.div>
                       )}
@@ -561,6 +626,17 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* Chat Panel Modal for Admin */}
+      <AnimatePresence>
+        {chatAlertId && (
+          <ChatPanel
+            alertId={chatAlertId}
+            currentUserId={currentUserId}
+            onClose={() => setChatAlertId(null)}
+          />
+        )}
+      </AnimatePresence>
 
       <style>{`@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`}</style>
     </div>

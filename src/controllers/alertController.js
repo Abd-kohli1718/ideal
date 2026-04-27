@@ -17,12 +17,15 @@ function mapAlertRow(row) {
 
 async function createAlert(req, res) {
   const { type, message, latitude, longitude } = req.body || {};
-  if (!message || latitude === undefined || longitude === undefined) {
+  if (!message) {
     return res.status(400).json({
       success: false,
-      error: 'message, latitude, and longitude are required',
+      error: 'message is required',
     });
   }
+
+  // Location is optional — null means "Location off"
+  const hasLocation = latitude !== undefined && latitude !== null && longitude !== undefined && longitude !== null;
 
   const alertType = ['sos_button', 'social_post', 'manual_form', 'audio_sos', 'media_post'].includes(type)
     ? type
@@ -56,8 +59,8 @@ async function createAlert(req, res) {
         user_id: req.user.id,
         type: alertType,
         message,
-        latitude: Number(latitude),
-        longitude: Number(longitude),
+        latitude: hasLocation ? Number(latitude) : null,
+        longitude: hasLocation ? Number(longitude) : null,
         severity: 'low',
         response_type: 'unknown',
         status: 'active',
@@ -104,7 +107,7 @@ async function listAlerts(req, res) {
     const supabase = getServiceClient();
     let q = supabase
       .from('alerts')
-      .select('*, triage_results(*)')
+      .select('*, triage_results(*), users(full_name)')
       .order('created_at', { ascending: false });
 
     if (status) q = q.eq('status', status);
@@ -118,7 +121,12 @@ async function listAlerts(req, res) {
       return res.status(500).json({ success: false, error: 'Failed to load alerts' });
     }
 
-    const rows = (data || []).map(mapAlertRow);
+    const rows = (data || []).map(row => {
+      const mapped = mapAlertRow(row);
+      // Attach user_name from joined users table
+      mapped.user_name = row.users?.full_name || null;
+      return mapped;
+    });
     return res.json({ success: true, data: { alerts: rows } });
   } catch (e) {
     console.error('listAlerts', e);

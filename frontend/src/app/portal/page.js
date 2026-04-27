@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api";
 import Logo from "@/components/Logo";
+
+const ACCESS_CODES = {
+  admin: "ADMIN2026",
+  responder: "FIELD2026",
+};
 
 export default function PortalPage() {
   const router = useRouter();
@@ -15,6 +20,28 @@ export default function PortalPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [mode, setMode] = useState("login");
+
+  // Access code verification step
+  const [step, setStep] = useState("credentials"); // "credentials" | "access_code"
+  const [accessCode, setAccessCode] = useState("");
+  const [pendingSession, setPendingSession] = useState(null);
+
+  const handleAccessCodeVerify = () => {
+    const expected = ACCESS_CODES[pendingSession.role];
+    if (accessCode.trim().toUpperCase() !== expected) {
+      setError("Invalid access code. Contact your department administrator.");
+      return;
+    }
+
+    // Access code verified — store session and redirect
+    const { token, user, assignedRole } = pendingSession;
+    localStorage.setItem("resq_token", token);
+    localStorage.setItem("resq_user", JSON.stringify(user));
+    localStorage.setItem("resq_role", assignedRole);
+    document.cookie = `resq_role=${assignedRole}; path=/; max-age=${60 * 60 * 24 * 7}`;
+    document.cookie = `resq_authed=1; path=/; max-age=${60 * 60 * 24 * 7}`;
+    router.push(`/${assignedRole}`);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,12 +57,10 @@ export default function PortalPage() {
         });
         const { user: u, session } = res.data;
         if (session?.access_token) {
-          localStorage.setItem("resq_token", session.access_token);
-          localStorage.setItem("resq_user", JSON.stringify(u));
-          localStorage.setItem("resq_role", role);
-          document.cookie = `resq_role=${role}; path=/; max-age=${60 * 60 * 24 * 7}`;
-          document.cookie = `resq_authed=1; path=/; max-age=${60 * 60 * 24 * 7}`;
-          router.push(`/${role}`);
+          // Move to access code step
+          setPendingSession({ token: session.access_token, user: u, role, assignedRole: role });
+          setStep("access_code");
+          setError("");
         } else {
           setMode("login");
           setError(`Account created! Check your email to confirm, then sign in as ${role}.`);
@@ -47,14 +72,11 @@ export default function PortalPage() {
         });
         const { access_token, user: u } = res.data;
         const assignedRole = u?.user_metadata?.role || role;
-        
-        localStorage.setItem("resq_token", access_token);
-        localStorage.setItem("resq_user", JSON.stringify(u));
-        localStorage.setItem("resq_role", assignedRole);
-        document.cookie = `resq_role=${assignedRole}; path=/; max-age=${60 * 60 * 24 * 7}`;
-        document.cookie = `resq_authed=1; path=/; max-age=${60 * 60 * 24 * 7}`;
-        
-        router.push(`/${assignedRole}`);
+
+        // Move to access code step
+        setPendingSession({ token: access_token, user: u, role: assignedRole, assignedRole });
+        setStep("access_code");
+        setError("");
       }
     } catch (err) {
       setError(err.message || "Login failed");
@@ -62,6 +84,82 @@ export default function PortalPage() {
       setLoading(false);
     }
   };
+
+  // Access code step UI
+  if (step === "access_code") {
+    return (
+      <div style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, background: "var(--bg)" }}>
+        <motion.div
+          className="login-card"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          style={{ maxWidth: 420 }}
+        >
+          <div style={{ textAlign: "center", marginBottom: 28 }}>
+            <Logo size={32} />
+            <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+              Access Verification
+            </p>
+          </div>
+
+          {/* Security animation */}
+          <div style={{ textAlign: "center", marginBottom: 20 }}>
+            <motion.div
+              animate={{ scale: [1, 1.1, 1], opacity: [0.6, 1, 0.6] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              style={{ fontSize: 48, marginBottom: 8 }}
+            >
+              🔐
+            </motion.div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>
+              Enter {pendingSession?.role === "admin" ? "Admin" : "Responder"} Access Code
+            </h2>
+            <p style={{ fontSize: 12, color: "var(--muted)" }}>
+              This code is provided by your department administrator
+            </p>
+          </div>
+
+          {error && (
+            <div style={{
+              background: "rgba(255,45,45,0.08)", border: "1px solid rgba(255,45,45,0.2)",
+              borderRadius: 10, padding: "10px 14px", marginBottom: 16, fontSize: 12, color: "#ff6b6b",
+            }}>
+              {error}
+            </div>
+          )}
+
+          <input
+            className="input"
+            type="text"
+            placeholder="Enter access code…"
+            value={accessCode}
+            onChange={(e) => setAccessCode(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") handleAccessCodeVerify(); }}
+            style={{ marginBottom: 16, textAlign: "center", fontSize: 18, letterSpacing: "0.15em", fontWeight: 700 }}
+            autoFocus
+          />
+
+          <button
+            className="btn btn-primary"
+            onClick={handleAccessCodeVerify}
+            style={{ width: "100%", padding: "14px 20px", fontSize: 14, borderRadius: 14 }}
+          >
+            Verify & Enter →
+          </button>
+
+          <div style={{ textAlign: "center", marginTop: 16 }}>
+            <button
+              onClick={() => { setStep("credentials"); setPendingSession(null); setAccessCode(""); setError(""); }}
+              style={{ background: "none", border: "none", color: "var(--muted)", cursor: "pointer", fontFamily: "inherit", fontSize: 12 }}
+            >
+              ← Back to Login
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: "relative", minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, background: "var(--bg)" }}>

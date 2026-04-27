@@ -311,7 +311,7 @@ export default function ResponderPage() {
                           )}
 
                           {/* Location */}
-                          {a.latitude && (
+                          {a.latitude ? (
                             <div style={{
                               background: "var(--surface2)", borderRadius: 10, padding: "10px 14px",
                               marginBottom: 14, display: "flex", alignItems: "center", gap: 8,
@@ -339,6 +339,22 @@ export default function ResponderPage() {
                               >
                                 Navigate →
                               </a>
+                            </div>
+                          ) : (
+                            <div style={{
+                              background: "rgba(245,158,11,0.06)", borderRadius: 10, padding: "10px 14px",
+                              marginBottom: 14, display: "flex", alignItems: "center", gap: 8,
+                              border: "1px solid rgba(245,158,11,0.15)",
+                            }}>
+                              <span style={{ fontSize: 16 }}>⚠️</span>
+                              <div>
+                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--yellow, #f59e0b)" }}>
+                                  Location off
+                                </div>
+                                <div style={{ fontSize: 10, color: "var(--muted)" }}>
+                                  GPS was unavailable when this alert was sent
+                                </div>
+                              </div>
                             </div>
                           )}
 

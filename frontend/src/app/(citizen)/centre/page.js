@@ -15,7 +15,7 @@ const FILTER_OPTIONS = [
   { label: "🟢 Low", value: "low" },
 ];
 
-// Deterministic votes from alert ID
+// Deterministic votes from alert ID (only for simulated posts)
 function hashVotes(id) {
   if (!id) return 0;
   let h = 0;
@@ -34,6 +34,14 @@ export default function CentrePage() {
   const [filter, setFilter] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [votedIds, setVotedIds] = useState(new Set());
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("resq_user");
+      if (saved) setCurrentUser(JSON.parse(saved));
+    } catch {}
+  }, []);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -47,17 +55,31 @@ export default function CentrePage() {
         if (m) { media_url = m[1]; msg = msg.replace(m[0], "").trim(); }
         if (media_url?.includes(".mp4")) media_type = "video";
         else if (media_url?.includes("audio")) media_type = "audio";
+
+        // Check if this is a simulated post (has [MEDIA:] tag with unsplash URL = simulated)
+        const isSimulated = a.type === "social_post" && media_url && media_url.includes("unsplash.com");
+        // Check if this is user's own post
+        const isOwnPost = currentUser && a.user_id === currentUser.id;
+
         return {
           id: a.id, caption: msg,
           severity: a.triage_result?.severity || a.severity || "low",
           type: a.type,
+          // Show location only if available, don't fake it
           location: a.latitude ? `${Number(a.latitude).toFixed(3)}, ${Number(a.longitude).toFixed(3)}` : null,
-          votes: hashVotes(a.id), comments: hashComments(a.id),
+          locationOff: !a.latitude,
+          // Simulated posts get hash votes, user posts start fresh at 0
+          votes: isSimulated ? hashVotes(a.id) : 0,
+          comments: isSimulated ? hashComments(a.id) : 0,
           created_at: a.created_at, media_url, media_type,
+          isSimulated,
+          isOwnPost,
+          user_id: a.user_id,
+          sender_name: a.user_name || null,
         };
       }));
     } catch { setPosts([]); }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => { fetchPosts(); }, [fetchPosts]);
 
@@ -74,6 +96,21 @@ export default function CentrePage() {
     try {
       let msg = caption || "";
       const tid = toast.loading("Posting...");
+
+      // Get user's real location
+      let latitude = null;
+      let longitude = null;
+
+      try {
+        const pos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+        });
+        latitude = pos.coords.latitude;
+        longitude = pos.coords.longitude;
+      } catch {
+        // Location not available — that's okay, we won't fake it
+      }
+
       if (media || audio) {
         try {
           const { getSupabaseBrowser } = await import("@/lib/supabase");
@@ -88,10 +125,21 @@ export default function CentrePage() {
           }
         } catch {}
       }
+
+      const body = {
+        type: type || "social_post",
+        message: msg.trim(),
+      };
+
+      // Only include location if we have it
+      if (latitude !== null && longitude !== null) {
+        body.latitude = latitude;
+        body.longitude = longitude;
+      }
+
       await apiFetch("/api/alerts", {
         method: "POST",
-        body: JSON.stringify({ type: type || "social_post", message: msg.trim(),
-          latitude: 12.9716 + (Math.random() - 0.5) * 0.1, longitude: 77.5946 + (Math.random() - 0.5) * 0.1 }),
+        body: JSON.stringify(body),
       });
       toast.success("Posted!", { id: tid });
       fetchPosts();
@@ -135,6 +183,49 @@ export default function CentrePage() {
           </motion.button>
         </div>
         <FilterPills options={FILTER_OPTIONS} active={filter} onChange={setFilter} />
+      </motion.div>
+
+      {/* Threat Level Indicator */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        style={{
+          background: "linear-gradient(135deg, rgba(255,45,45,0.06), rgba(255,170,40,0.04))",
+          border: "1px solid rgba(255,45,45,0.15)", borderRadius: 14,
+          padding: "12px 16px", marginBottom: 14,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            background: posts.filter(p => p.severity === "high").length > 3
+              ? "linear-gradient(135deg, #ff2d2d, #ff6b6b)"
+              : posts.filter(p => p.severity === "high").length > 0
+                ? "linear-gradient(135deg, #ffaa28, #ffd93d)"
+                : "linear-gradient(135deg, #4cd17f, #86efac)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 16, color: "#fff", fontWeight: 800,
+          }}>
+            {posts.filter(p => p.severity === "high").length > 3 ? "⚠️" : posts.filter(p => p.severity === "high").length > 0 ? "🟡" : "✅"}
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text)", letterSpacing: "0.04em" }}>
+              THREAT LEVEL: {posts.filter(p => p.severity === "high").length > 3 ? "HIGH" : posts.filter(p => p.severity === "high").length > 0 ? "ELEVATED" : "NORMAL"}
+            </div>
+            <div style={{ fontSize: 10, color: "var(--muted)" }}>
+              {posts.filter(p => p.severity === "high").length} critical · {posts.filter(p => p.severity === "medium").length} medium · {posts.filter(p => p.severity === "low").length} low
+            </div>
+          </div>
+        </div>
+        <motion.div
+          animate={{ opacity: [0.4, 1, 0.4] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          style={{
+            width: 8, height: 8, borderRadius: "50%",
+            background: posts.filter(p => p.severity === "high").length > 0 ? "#ff2d2d" : "#4cd17f",
+          }}
+        />
       </motion.div>
 
       {/* Live count */}

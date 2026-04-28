@@ -139,8 +139,10 @@ export default function SOSHomePage() {
       startCooldown();
       toast.success("SOS alert sent! Connecting call…", { duration: 3000 });
       setTimeout(() => setTriggered(false), 5000);
-      // Open phone dialer
-      window.location.href = `tel:${ADMIN_PHONE}`;
+      // Open phone dialer — use both methods for reliability
+      const telLink = document.createElement("a");
+      telLink.href = `tel:${ADMIN_PHONE}`;
+      telLink.click();
     } catch (err) {
       if (err.code === "AUTH_EXPIRED") { window.location.href = "/login"; return; }
       toast.error(err.message || "Failed to send SOS");

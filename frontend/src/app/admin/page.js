@@ -331,31 +331,30 @@ export default function AdminPage() {
                             {expandedId === a.id ? "Close" : "🔍 Verify"}
                           </button>
                         ) : (
-                          <>
-                            <button
-                              onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
-                              style={{
-                                background: expandedId === a.id ? "rgba(255,45,45,0.1)" : "rgba(76,209,127,0.08)",
-                                border: `1px solid ${expandedId === a.id ? "rgba(255,45,45,0.2)" : "rgba(76,209,127,0.2)"}`,
-                                borderRadius: 10, padding: "8px 14px", fontSize: 11, fontWeight: 600,
-                                color: expandedId === a.id ? "#ff6b6b" : "#4cd17f",
-                                cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
-                              }}
-                            >
-                              {expandedId === a.id ? "Cancel" : "⚡ Deploy"}
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); setChatAlertId(a.id); }}
-                              style={{
-                                background: "var(--surface2)", border: "1px solid var(--border)",
-                                borderRadius: 10, padding: "8px 10px", fontSize: 11,
-                                cursor: "pointer", fontFamily: "inherit",
-                              }}
-                            >
-                              💬
-                            </button>
-                          </>
+                          <button
+                            onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
+                            style={{
+                              background: expandedId === a.id ? "rgba(255,45,45,0.1)" : "rgba(76,209,127,0.08)",
+                              border: `1px solid ${expandedId === a.id ? "rgba(255,45,45,0.2)" : "rgba(76,209,127,0.2)"}`,
+                              borderRadius: 10, padding: "8px 14px", fontSize: 11, fontWeight: 600,
+                              color: expandedId === a.id ? "#ff6b6b" : "#4cd17f",
+                              cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                            }}
+                          >
+                            {expandedId === a.id ? "Cancel" : "⚡ Deploy"}
+                          </button>
                         )}
+                        {/* Chat always available for admin */}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setChatAlertId(a.id); }}
+                          style={{
+                            background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)",
+                            borderRadius: 10, padding: "8px 10px", fontSize: 11,
+                            cursor: "pointer", fontFamily: "inherit", color: "#5b8def",
+                          }}
+                        >
+                          💬
+                        </button>
                       </div>
                     </div>
 

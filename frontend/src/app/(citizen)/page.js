@@ -33,6 +33,8 @@ export default function SOSHomePage() {
   const [chatAlertId, setChatAlertId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
+  const isManualRef = useRef(false);
+
   const requestLocation = useCallback(async () => {
     if (!navigator.geolocation) {
       setLocStatus("Geolocation not supported");
@@ -41,7 +43,6 @@ export default function SOSHomePage() {
     }
 
     setLocRefreshing(true);
-    setLocStatus("Detecting location…");
 
     // Check permission status first
     try {
@@ -52,6 +53,7 @@ export default function SOSHomePage() {
           setLocAvailable(false);
           setLocationDenied(true);
           setLocRefreshing(false);
+          if (isManualRef.current) toast.error("Location access denied. Enable in browser settings.", { duration: 3000 });
           perm.onchange = () => {
             if (perm.state === 'granted' || perm.state === 'prompt') {
               setLocationDenied(false);
@@ -70,18 +72,30 @@ export default function SOSHomePage() {
         setLocAvailable(true);
         setLocationDenied(false);
         setLocRefreshing(false);
-        toast.success("Location updated!", { duration: 2000 });
+        if (isManualRef.current) toast.success("Location updated!", { duration: 2000 });
       },
       () => {
-        setLocStatus("Location unavailable — enable GPS for SOS");
-        setLocAvailable(false);
+        // Only wipe location if we don't already have one
+        if (!userPos) {
+          setLocStatus("Location unavailable — enable GPS for SOS");
+          setLocAvailable(false);
+        } else {
+          // Keep existing location, just show a toast
+          if (isManualRef.current) toast("Using last known location", { icon: "📍", duration: 2000 });
+        }
         setLocRefreshing(false);
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, []);
+  }, [userPos]);
 
   useEffect(() => {
+    requestLocation();
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Manual refresh handler
+  const handleRefreshLocation = useCallback(() => {
+    isManualRef.current = true;
     requestLocation();
   }, [requestLocation]);
 
@@ -329,7 +343,7 @@ export default function SOSHomePage() {
         >
           <button
             className="loc-status-btn"
-            onClick={requestLocation}
+            onClick={handleRefreshLocation}
             disabled={locRefreshing}
             style={{
               background: locAvailable ? "var(--surface)" : "rgba(245,158,11,0.08)",

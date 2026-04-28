@@ -50,6 +50,7 @@ export default function SOSHomePage() {
   const [chatAlertId, setChatAlertId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [locRefreshing, setLocRefreshing] = useState(false);
+  const isManualRef = useRef(false);
 
   // Get location
   const requestLocation = useCallback(() => {
@@ -59,25 +60,33 @@ export default function SOSHomePage() {
       return;
     }
     setLocRefreshing(true);
-    setLocStatus("Detecting location…");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setUserPos({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
         setLocStatus(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
         setLocAvailable(true);
         setLocRefreshing(false);
-        toast.success("Location updated!", { duration: 2000 });
+        if (isManualRef.current) toast.success("Location updated!", { duration: 2000 });
       },
       () => {
-        setLocStatus("Location unavailable — enable GPS for SOS");
-        setLocAvailable(false);
+        if (!userPos) {
+          setLocStatus("Location unavailable — enable GPS for SOS");
+          setLocAvailable(false);
+        } else {
+          if (isManualRef.current) toast("Using last known location", { icon: "📍", duration: 2000 });
+        }
         setLocRefreshing(false);
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, []);
+  }, [userPos]);
 
-  useEffect(() => { requestLocation(); }, [requestLocation]);
+  useEffect(() => { requestLocation(); }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleRefreshLocation = useCallback(() => {
+    isManualRef.current = true;
+    requestLocation();
+  }, [requestLocation]);
 
   // Cooldown timer cleanup
   useEffect(() => {
@@ -357,7 +366,7 @@ export default function SOSHomePage() {
         >
           <button
             className="loc-status-btn"
-            onClick={requestLocation}
+            onClick={handleRefreshLocation}
             disabled={locRefreshing}
             style={{
               background: locAvailable ? "var(--surface)" : "rgba(245,158,11,0.08)",

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { apiFetch } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import Logo from "@/components/Logo";
+import ChatPanel from "@/components/ChatPanel";
 import toast from "react-hot-toast";
 
 function RedDots() {
@@ -26,9 +28,11 @@ function RedDots() {
   );
 }
 
-const SOS_COOLDOWN_MS = 30000; // 30 second cooldown (C1)
+const SOS_COOLDOWN_MS = 30000;
+const ADMIN_PHONE = "7400136507";
 
 export default function SOSHomePage() {
+  const { user } = useAuth();
   const [userPos, setUserPos] = useState(null);
   const [locStatus, setLocStatus] = useState("Detecting location…");
   const [locAvailable, setLocAvailable] = useState(false);
@@ -36,10 +40,15 @@ export default function SOSHomePage() {
   const [progress, setProgress] = useState(0);
   const [triggered, setTriggered] = useState(false);
   const [sending, setSending] = useState(false);
-  const [cooldown, setCooldown] = useState(0); // seconds remaining
+  const [cooldown, setCooldown] = useState(0);
   const startRef = useRef(null);
   const frameRef = useRef(null);
   const cooldownRef = useRef(null);
+
+  // New state: modal + chat
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [chatAlertId, setChatAlertId] = useState(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   // Get location
   useEffect(() => {
@@ -79,39 +88,85 @@ export default function SOSHomePage() {
     }, 1000);
   }, []);
 
+  // Instead of directly sending, show the action modal
   const triggerSOS = useCallback(async () => {
-    // C11: Block if no real location
     if (!locAvailable || !userPos) {
       toast.error("Location required for SOS. Please enable GPS.", { duration: 4000 });
       return;
     }
+    setShowActionModal(true);
+  }, [locAvailable, userPos]);
 
-    setSending(true);
+  // Helper: create the SOS alert and return the alert data
+  const createSOSAlert = useCallback(async () => {
+    const res = await apiFetch("/api/alerts", {
+      method: "POST",
+      body: JSON.stringify({
+        type: "sos_button",
+        message: "🚨 SOS Emergency — Immediate help needed",
+        latitude: userPos.latitude,
+        longitude: userPos.longitude,
+      }),
+    });
+    return res.data;
+  }, [userPos]);
+
+  // Handle CALL admin
+  const handleCallAdmin = useCallback(async () => {
+    setActionLoading(true);
     try {
-      await apiFetch("/api/alerts", {
-        method: "POST",
-        body: JSON.stringify({
-          type: "sos_button",
-          message: "SOS Emergency — Immediate help needed",
-          latitude: userPos.latitude,
-          longitude: userPos.longitude,
-        }),
-      });
+      await createSOSAlert();
+      setShowActionModal(false);
       setTriggered(true);
-      toast.success("Emergency SOS sent! Help is on the way.", { duration: 4000 });
-      // C1: Start cooldown to prevent duplicates
       startCooldown();
+      toast.success("SOS alert sent! Connecting call…", { duration: 3000 });
       setTimeout(() => setTriggered(false), 5000);
+      // Open phone dialer
+      window.location.href = `tel:${ADMIN_PHONE}`;
     } catch (err) {
-      if (err.code === "AUTH_EXPIRED") {
-        window.location.href = "/login";
-        return;
-      }
+      if (err.code === "AUTH_EXPIRED") { window.location.href = "/login"; return; }
       toast.error(err.message || "Failed to send SOS");
     } finally {
-      setSending(false);
+      setActionLoading(false);
     }
-  }, [userPos, locAvailable, startCooldown]);
+  }, [createSOSAlert, startCooldown]);
+
+  // Handle CHAT with admin
+  const handleChatAdmin = useCallback(async () => {
+    setActionLoading(true);
+    try {
+      const alertData = await createSOSAlert();
+      const alertId = alertData?.id;
+
+      if (!alertId) {
+        toast.error("Failed to create alert");
+        setActionLoading(false);
+        return;
+      }
+
+      // Auto-send an emergency message
+      await apiFetch(`/api/alerts/${alertId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({
+          content: "🚨 EMERGENCY SOS — I need immediate help! Please respond urgently. My location has been shared automatically.",
+        }),
+      });
+
+      setShowActionModal(false);
+      setTriggered(true);
+      startCooldown();
+      toast.success("Emergency chat started!", { duration: 3000 });
+      setTimeout(() => setTriggered(false), 5000);
+
+      // Open chat panel
+      setChatAlertId(alertId);
+    } catch (err) {
+      if (err.code === "AUTH_EXPIRED") { window.location.href = "/login"; return; }
+      toast.error(err.message || "Failed to send SOS");
+    } finally {
+      setActionLoading(false);
+    }
+  }, [createSOSAlert, startCooldown]);
 
   const animate = useCallback(() => {
     const elapsed = Date.now() - startRef.current;
@@ -128,7 +183,6 @@ export default function SOSHomePage() {
 
   const handleDown = () => {
     if (triggered || sending || cooldown > 0) return;
-    // C11: Don't allow SOS without location
     if (!locAvailable) {
       toast.error("Enable location to use SOS", { duration: 3000 });
       return;
@@ -281,7 +335,7 @@ export default function SOSHomePage() {
                     : "Hold to activate SOS"}
           </p>
           <p style={{ fontSize: 12, color: "var(--muted)" }}>
-            Shares your location with nearest emergency responder
+            Choose to call or chat with admin after activation
           </p>
         </motion.div>
 
@@ -307,6 +361,131 @@ export default function SOSHomePage() {
           <span>{locStatus}</span>
         </motion.div>
       </div>
+
+      {/* ===== ACTION MODAL ===== */}
+      <AnimatePresence>
+        {showActionModal && (
+          <motion.div
+            className="sos-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !actionLoading && setShowActionModal(false)}
+          >
+            <motion.div
+              className="sos-modal-sheet"
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 28, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Handle bar */}
+              <div className="modal-handle" />
+
+              {/* Header */}
+              <div style={{ textAlign: "center", marginBottom: 24 }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: "50%",
+                  background: "linear-gradient(135deg, rgba(255,45,45,0.15), rgba(255,100,50,0.08))",
+                  border: "2px solid rgba(255,45,45,0.25)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 14px", fontSize: 28,
+                  boxShadow: "0 0 40px rgba(255,45,45,0.15)",
+                }}>
+                  🚨
+                </div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 6, color: "var(--text)" }}>
+                  How do you want to reach Admin?
+                </h3>
+                <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                  Your location will be shared automatically with the emergency response team
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+                {/* CALL Button */}
+                <button
+                  className="sos-action-btn sos-action-call"
+                  onClick={handleCallAdmin}
+                  disabled={actionLoading}
+                >
+                  <div className="sos-action-icon-wrap sos-action-icon-call">
+                    <span style={{ fontSize: 22 }}>📞</span>
+                  </div>
+                  <div className="sos-action-content">
+                    <div className="sos-action-title">Call Admin</div>
+                    <div className="sos-action-desc">Direct phone call for urgent voice communication</div>
+                  </div>
+                  <div className="sos-action-arrow">→</div>
+                </button>
+
+                {/* CHAT Button */}
+                <button
+                  className="sos-action-btn sos-action-chat"
+                  onClick={handleChatAdmin}
+                  disabled={actionLoading}
+                >
+                  <div className="sos-action-icon-wrap sos-action-icon-chat">
+                    <span style={{ fontSize: 22 }}>💬</span>
+                  </div>
+                  <div className="sos-action-content">
+                    <div className="sos-action-title">Chat with Admin</div>
+                    <div className="sos-action-desc">Send emergency message &amp; start live chat</div>
+                  </div>
+                  <div className="sos-action-arrow">→</div>
+                </button>
+              </div>
+
+              {/* Loading overlay */}
+              {actionLoading && (
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: "rgba(0,0,0,0.5)",
+                  backdropFilter: "blur(4px)",
+                  borderRadius: "inherit",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  flexDirection: "column", gap: 12,
+                  zIndex: 10,
+                }}>
+                  <div style={{
+                    width: 36, height: 36,
+                    border: "3px solid rgba(255,255,255,0.15)",
+                    borderTopColor: "var(--red)",
+                    borderRadius: "50%",
+                    animation: "spin 0.7s linear infinite",
+                  }} />
+                  <span style={{ fontSize: 13, color: "var(--text2)", fontWeight: 500 }}>
+                    Sending emergency alert…
+                  </span>
+                </div>
+              )}
+
+              {/* Cancel */}
+              <button
+                className="sos-action-cancel"
+                onClick={() => setShowActionModal(false)}
+                disabled={actionLoading}
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ===== CHAT PANEL ===== */}
+      <AnimatePresence>
+        {chatAlertId && (
+          <ChatPanel
+            alertId={chatAlertId}
+            currentUserId={user?.id}
+            onClose={() => setChatAlertId(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

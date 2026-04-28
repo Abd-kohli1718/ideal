@@ -1372,3 +1372,83 @@ select.input { cursor: pointer; }
   opacity: 0.3;
   cursor: not-allowed;
 }
+
+/* ===== LOCATION STATUS BUTTON ===== */
+.loc-status-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 16px;
+  border: 1px solid var(--border2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.3s ease;
+  min-width: 220px;
+  position: relative;
+  overflow: hidden;
+}
+
+.loc-status-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.03) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.loc-status-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+  border-color: var(--border2);
+}
+
+.loc-status-btn:active {
+  transform: scale(0.97);
+}
+
+.loc-status-btn:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.loc-status-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: transform 0.3s;
+}
+
+.loc-status-btn:hover .loc-status-icon:not(.loc-spinning) {
+  transform: scale(1.15);
+}
+
+.loc-spinning {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+  font-size: 20px;
+}
+
+.loc-status-text {
+  font-size: 12px;
+  font-weight: 600;
+  flex: 1;
+  text-align: left;
+  letter-spacing: -0.01em;
+}
+
+.loc-status-action {
+  font-size: 10px;
+  font-weight: 500;
+  opacity: 0.5;
+  flex-shrink: 0;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.2s;
+}
+
+.loc-status-btn:hover .loc-status-action {
+  opacity: 0.8;
+  background: rgba(255,255,255,0.08);
+}

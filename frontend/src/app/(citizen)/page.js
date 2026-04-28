@@ -26,58 +26,64 @@ export default function SOSHomePage() {
   const cooldownRef = useRef(null);
 
   const [locationDenied, setLocationDenied] = useState(false);
+  const [locRefreshing, setLocRefreshing] = useState(false);
 
   // New state: modal + chat
   const [showActionModal, setShowActionModal] = useState(false);
   const [chatAlertId, setChatAlertId] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    async function requestLocation() {
-      if (!navigator.geolocation) {
-        setLocStatus("Geolocation not supported");
-        setLocAvailable(false);
-        return;
-      }
-
-      // Check permission status first
-      try {
-        if (navigator.permissions) {
-          const perm = await navigator.permissions.query({ name: 'geolocation' });
-          if (perm.state === 'denied') {
-            setLocStatus("Location blocked — tap to enable in settings");
-            setLocAvailable(false);
-            setLocationDenied(true);
-            // Listen for permission change (user re-enables in settings)
-            perm.onchange = () => {
-              if (perm.state === 'granted' || perm.state === 'prompt') {
-                setLocationDenied(false);
-                requestLocation();
-              }
-            };
-            return;
-          }
-        }
-      } catch {}
-
-      // Always request — this will prompt if permission is 'prompt'
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserPos({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-          setLocStatus(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
-          setLocAvailable(true);
-          setLocationDenied(false);
-        },
-        () => {
-          setLocStatus("Location unavailable — enable GPS for SOS");
-          setLocAvailable(false);
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
+  const requestLocation = useCallback(async () => {
+    if (!navigator.geolocation) {
+      setLocStatus("Geolocation not supported");
+      setLocAvailable(false);
+      return;
     }
 
-    requestLocation();
+    setLocRefreshing(true);
+    setLocStatus("Detecting location…");
+
+    // Check permission status first
+    try {
+      if (navigator.permissions) {
+        const perm = await navigator.permissions.query({ name: 'geolocation' });
+        if (perm.state === 'denied') {
+          setLocStatus("Location blocked — tap to enable in settings");
+          setLocAvailable(false);
+          setLocationDenied(true);
+          setLocRefreshing(false);
+          perm.onchange = () => {
+            if (perm.state === 'granted' || perm.state === 'prompt') {
+              setLocationDenied(false);
+              requestLocation();
+            }
+          };
+          return;
+        }
+      }
+    } catch {}
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserPos({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        setLocStatus(`${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+        setLocAvailable(true);
+        setLocationDenied(false);
+        setLocRefreshing(false);
+        toast.success("Location updated!", { duration: 2000 });
+      },
+      () => {
+        setLocStatus("Location unavailable — enable GPS for SOS");
+        setLocAvailable(false);
+        setLocRefreshing(false);
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
   }, []);
+
+  useEffect(() => {
+    requestLocation();
+  }, [requestLocation]);
 
   useEffect(() => { return () => { if (cooldownRef.current) clearInterval(cooldownRef.current); }; }, []);
 
@@ -314,26 +320,31 @@ export default function SOSHomePage() {
           </p>
         </motion.div>
 
-        {/* Location */}
+        {/* Location Button */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.7 }}
-          style={{
-            marginTop: 32,
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 16px",
-            background: locAvailable ? "var(--surface)" : "rgba(245,158,11,0.08)",
-            border: `1px solid ${locAvailable ? "var(--border)" : "rgba(245,158,11,0.2)"}`,
-            borderRadius: 20,
-            fontSize: 11,
-            color: locAvailable ? "var(--muted)" : "var(--yellow)",
-          }}
+          style={{ marginTop: 28, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}
         >
-          <span>{locAvailable ? "📍" : "⚠️"}</span>
-          <span>{locStatus}</span>
+          <button
+            className="loc-status-btn"
+            onClick={requestLocation}
+            disabled={locRefreshing}
+            style={{
+              background: locAvailable ? "var(--surface)" : "rgba(245,158,11,0.08)",
+              borderColor: locAvailable ? "var(--border2)" : "rgba(245,158,11,0.25)",
+              color: locAvailable ? "var(--text2)" : "var(--yellow)",
+            }}
+          >
+            <span className={`loc-status-icon ${locRefreshing ? "loc-spinning" : ""}`}>
+              {locRefreshing ? "↻" : locAvailable ? "📍" : "⚠️"}
+            </span>
+            <span className="loc-status-text">{locStatus}</span>
+            <span className="loc-status-action">
+              {locRefreshing ? "Refreshing…" : locAvailable ? "Tap to refresh" : "Tap to enable"}
+            </span>
+          </button>
         </motion.div>
       </div>
 

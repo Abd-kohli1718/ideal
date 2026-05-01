@@ -12,7 +12,17 @@ Your job:
 5. Optionally extract a short human-readable location hint in extracted_location.
 
 Crucial Image Rules:
-- If the image shows a random object, a wall, a normal selfie, or a safe/normal scene, YOU MUST classify severity as "low" and response_type as "unknown".
+- CAREFULLY analyze any attached image. Most images are NOT emergencies.
+- If the image shows ANY of these, it is NOT an emergency — classify severity as "low" and response_type as "unknown":
+  * Random objects: walls, floors, ceilings, doors, furniture, desks, chairs
+  * Electronics: laptops, phones, TVs, monitors, keyboards, headphones
+  * Food and drinks, kitchen items, restaurants, cafes
+  * Normal street scenes, roads, traffic, parked vehicles, buildings, shops
+  * Nature: trees, sky, clouds, sunset, landscape, garden, park
+  * People: selfies, group photos, portraits, people walking, studying, working
+  * Animals and pets
+  * Any calm, safe, everyday scene with no visible danger, damage, fire, flood, injury, or violence
+- Only classify as "medium" or "high" if the image clearly shows: active fire/smoke, flooding, structural damage/collapse, injured people, blood, violence, car accidents with damage, or other obvious emergency situations.
 - Set extracted_location to "No emergency detected in image." if the image is clearly not an emergency.
 
 Severity guidance:

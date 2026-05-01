@@ -80,6 +80,9 @@ def extract_media_urls(message):
     clean_msg = re.sub(media_regex, "", message).strip()
     return clean_msg, urls
 
+# If the model's top confidence is below this, the image probably isn't a disaster at all
+IMAGE_CONFIDENCE_THRESHOLD = 0.55
+
 def infer_image(url):
     import torch
     from torchvision import transforms
@@ -104,7 +107,17 @@ def infer_image(url):
         conf, pred_idx = torch.max(probs, 0)
         
     idx_to_class = {0: "low", 1: "medium", 2: "high"}
-    return idx_to_class[pred_idx.item()], conf.item()
+    predicted_class = idx_to_class[pred_idx.item()]
+    confidence = conf.item()
+    
+    # If confidence is too low, the model doesn't recognize this as any disaster type
+    # → it's probably a random/non-emergency image (wall, selfie, sky, etc.)
+    is_emergency = confidence >= IMAGE_CONFIDENCE_THRESHOLD
+    if not is_emergency:
+        print(f"  [ML] Image confidence {confidence:.3f} < {IMAGE_CONFIDENCE_THRESHOLD} → NOT an emergency")
+        predicted_class = "low"
+    
+    return predicted_class, confidence, is_emergency
 
 class PredictHandler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -141,21 +154,26 @@ class PredictHandler(BaseHTTPRequestHandler):
                 # 2. Image Inference
                 img_severity = None
                 img_conf = 0.0
+                img_is_emergency = True
                 if image_model and media_urls:
                     try:
-                        img_severity, img_conf = infer_image(media_urls[0])
-                        print(f"  [ML] Image prediction: {img_severity} ({img_conf:.2f})")
+                        img_severity, img_conf, img_is_emergency = infer_image(media_urls[0])
+                        print(f"  [ML] Image prediction: {img_severity} ({img_conf:.2f}) emergency={img_is_emergency}")
                     except Exception as e:
                         print(f"  [ML] Image inference failed: {e}")
                         
-                # 3. Fusion: If image predicts higher severity, trust the image
+                # 3. Fusion: Only escalate if the image is actually an emergency
                 sev_levels = {"low": 1, "medium": 2, "high": 3}
-                if img_severity and sev_levels.get(img_severity, 0) > sev_levels.get(severity, 0):
+                if img_severity and img_is_emergency and sev_levels.get(img_severity, 0) > sev_levels.get(severity, 0):
                     severity = img_severity
                     sev_conf = img_conf
+                elif img_severity and not img_is_emergency:
+                    # Image is NOT an emergency — downgrade severity to low
+                    severity = "low"
+                    sev_conf = img_conf
 
-                # 4. Rules Fallback
-                if alert_type == "sos_button" and severity == "low":
+                # 4. Rules Fallback (only for SOS button WITH no image, or confirmed emergency image)
+                if alert_type == "sos_button" and severity == "low" and (not media_urls or img_is_emergency):
                     severity = "high"
                     sev_conf = max(sev_conf, 0.8)
 
@@ -165,6 +183,7 @@ class PredictHandler(BaseHTTPRequestHandler):
                     "severity_confidence": round(sev_conf, 3),
                     "response_confidence": round(resp_conf, 3),
                     "image_severity": img_severity,
+                    "image_is_emergency": img_is_emergency,
                     "is_duplicate": False,
                     "extracted_location": None,
                 }

@@ -23,4 +23,4 @@ async function clean() {
   console.log('Database cleaned! Ready for fresh simulations.');
 }
 
-clean();
+clean(); 

@@ -100,14 +100,24 @@ function runKeywordTriage(message, type, contextAlerts, alertId) {
 /**
  * Google Gemini (free tier via https://aistudio.google.com/apikey — often no paid billing).
  */
-async function callGemini(systemPrompt, userText) {
+async function callGemini(systemPrompt, userText, base64Images = []) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
+
+  const parts = [{ text: userText }];
+  for (const b64 of base64Images) {
+    parts.push({
+      inlineData: {
+        mimeType: 'image/jpeg',
+        data: b64
+      }
+    });
+  }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel()}:generateContent?key=${encodeURIComponent(key)}`;
   const body = {
     systemInstruction: { parts: [{ text: systemPrompt }] },
-    contents: [{ role: 'user', parts: [{ text: userText }] }],
+    contents: [{ role: 'user', parts }],
     generationConfig: {
       maxOutputTokens: MAX_OUTPUT_TOKENS,
       temperature: 0.2,
@@ -204,24 +214,63 @@ async function runTriage(alertId, message, type, latitude, longitude) {
     });
 
     if (mlResult && mlResult.severity) {
+      // If ML server explicitly says image is NOT an emergency, downgrade immediately
+      const mlSeverity = (mlResult.image_is_emergency === false) ? 'low' : mlResult.severity;
       normalized = {
-        severity: mlResult.severity,
+        severity: mlSeverity,
         response_type: mlResult.response_type || 'unknown',
         is_duplicate: mlResult.is_duplicate || false,
-        extracted_location: mlResult.extracted_location || null,
+        extracted_location: (mlResult.image_is_emergency === false)
+          ? 'No emergency detected in image.'
+          : (mlResult.extracted_location || null),
       };
-      rawText = `[ML Inference Server]\nSeverity: ${mlResult.severity} (${(mlResult.severity_confidence || 0).toFixed(2)})\nResponse: ${mlResult.response_type} (${(mlResult.response_confidence || 0).toFixed(2)})\nImage Severity: ${mlResult.image_severity || 'none'}`;
+      rawText = `[ML Inference Server]\nSeverity: ${mlSeverity} (${(mlResult.severity_confidence || 0).toFixed(2)})\nResponse: ${mlResult.response_type} (${(mlResult.response_confidence || 0).toFixed(2)})\nImage Severity: ${mlResult.image_severity || 'none'}\nImage Is Emergency: ${mlResult.image_is_emergency ?? 'n/a'}`;
     }
 
-    // 2. Try Gemini if ML server failed
-    if (!normalized && process.env.GEMINI_API_KEY) {
+    // Check if there are any images
+    const mediaRegex = /\[MEDIA:(https?:\/\/[^\]]+)\]/g;
+    const mediaUrls = [...(message || '').matchAll(mediaRegex)].map(m => m[1]);
+    let base64Images = [];
+
+    // If an image is present, ALWAYS run Gemini to verify it's a real emergency (to avoid false positives from ML server)
+    const shouldVerifyWithGemini = process.env.GEMINI_API_KEY && mediaUrls.length > 0;
+
+    // 2. Try Gemini if ML server failed OR if we need to verify an image
+    if ((!normalized || shouldVerifyWithGemini) && process.env.GEMINI_API_KEY) {
       try {
-        rawText = (await callGemini(TRIAGE_SYSTEM_PROMPT, userText)) || '';
-        const parsed = parseTriageJson(rawText);
-        if (parsed) normalized = normalizeResult(parsed);
+        if (shouldVerifyWithGemini) {
+          try {
+            const imgRes = await fetch(mediaUrls[0]);
+            const buf = await imgRes.arrayBuffer();
+            base64Images.push(Buffer.from(buf).toString('base64'));
+          } catch (e) {
+            console.error('triageService: failed to fetch image for Gemini', e);
+          }
+        }
+
+        const geminiText = (await callGemini(TRIAGE_SYSTEM_PROMPT, userText, base64Images)) || '';
+        const parsed = parseTriageJson(geminiText);
+        if (parsed) {
+          const geminiNormalized = normalizeResult(parsed);
+          
+          if (shouldVerifyWithGemini && normalized) {
+            // Override the ML server result if Gemini says it's low/non-emergency (e.g. wall pic)
+            if (geminiNormalized.severity === 'low') {
+               normalized = geminiNormalized;
+               rawText = `[Gemini Vision Override - No Emergency Detected]\n` + JSON.stringify(geminiNormalized, null, 2);
+            } else {
+               // Combine raw texts and trust Gemini's parsed result
+               rawText = rawText + `\n\n[Gemini Vision Verification]\n` + JSON.stringify(geminiNormalized, null, 2);
+               normalized = geminiNormalized;
+            }
+          } else {
+            normalized = geminiNormalized;
+            rawText = geminiText;
+          }
+        }
       } catch (gemErr) {
         console.error('triageService: Gemini request failed', gemErr);
-        rawText = gemErr?.message || String(gemErr);
+        if (!rawText) rawText = gemErr?.message || String(gemErr);
       }
     }
 

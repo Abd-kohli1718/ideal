@@ -80,11 +80,12 @@ export default function ResponderPage() {
   };
 
   const filtered = alerts.filter(a => {
-    if (filter === "active") return a.status === "active" || a.status === "accepted";
+    // Responders only see admin-dispatched alerts (status = accepted)
+    if (filter === "active") return a.status === "accepted";
     return a.status === "resolved";
   });
 
-  const activeCount = alerts.filter(a => a.status === "active" || a.status === "accepted").length;
+  const activeCount = alerts.filter(a => a.status === "accepted").length;
   const resolvedCount = alerts.filter(a => a.status === "resolved").length;
   const myAccepted = alerts.filter(a => a.status === "accepted").length;
 

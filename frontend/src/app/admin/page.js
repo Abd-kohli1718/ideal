@@ -301,15 +301,17 @@ export default function AdminPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.03 }}
                   style={{
-                    background: "var(--surface)", border: `1px solid ${sev === "high" ? "rgba(255,45,45,0.2)" : "var(--border)"}`,
+                    background: a.status === "resolved" ? "rgba(76,209,127,0.03)" : "var(--surface)",
+                    border: `1px solid ${a.status === "resolved" ? "rgba(76,209,127,0.25)" : sev === "high" ? "rgba(255,45,45,0.2)" : "var(--border)"}`,
                     borderRadius: 16, padding: 0, overflow: "hidden",
-                    boxShadow: sev === "high" ? "0 0 20px rgba(255,45,45,0.06)" : "none",
+                    boxShadow: a.status === "resolved" ? "0 0 16px rgba(76,209,127,0.06)" : sev === "high" ? "0 0 20px rgba(255,45,45,0.06)" : "none",
                   }}
                 >
                   {/* Top accent bar */}
                   <div style={{
                     height: 3,
-                    background: sev === "high" ? "linear-gradient(90deg, #ff2d2d, #ff6b6b)" :
+                    background: a.status === "resolved" ? "linear-gradient(90deg, #4cd17f, #86efac)" :
+                      sev === "high" ? "linear-gradient(90deg, #ff2d2d, #ff6b6b)" :
                       sev === "medium" ? "linear-gradient(90deg, #ffaa28, #ffd93d)" :
                       "linear-gradient(90deg, #4cd17f, #86efac)",
                   }} />
@@ -545,14 +547,16 @@ export default function AdminPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.03 }}
                       style={{
-                        background: "var(--surface)", border: `1px solid ${sev === "high" ? "rgba(255,45,45,0.2)" : "var(--border)"}`,
+                        background: a.status === "resolved" ? "rgba(76,209,127,0.03)" : "var(--surface)",
+                        border: `1px solid ${a.status === "resolved" ? "rgba(76,209,127,0.25)" : sev === "high" ? "rgba(255,45,45,0.2)" : "var(--border)"}`,
                         borderRadius: 16, padding: 0, overflow: "hidden",
-                        boxShadow: sev === "high" ? "0 0 20px rgba(255,45,45,0.06)" : "none",
+                        boxShadow: a.status === "resolved" ? "0 0 16px rgba(76,209,127,0.06)" : sev === "high" ? "0 0 20px rgba(255,45,45,0.06)" : "none",
                       }}
                     >
                       <div style={{
                         height: 3,
-                        background: sev === "high" ? "linear-gradient(90deg, #ff2d2d, #ff6b6b)" :
+                        background: a.status === "resolved" ? "linear-gradient(90deg, #4cd17f, #86efac)" :
+                          sev === "high" ? "linear-gradient(90deg, #ff2d2d, #ff6b6b)" :
                           sev === "medium" ? "linear-gradient(90deg, #ffaa28, #ffd93d)" :
                           "linear-gradient(90deg, #4cd17f, #86efac)",
                       }} />

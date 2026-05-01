@@ -373,24 +373,30 @@ export default function ResponderPage() {
                             </div>
                           )}
 
-                          {/* Response info */}
-                          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                            {[
-                              { icon: "🚑", label: "Ambulances", count: sev === "high" ? 2 : 1 },
-                              { icon: "🚒", label: "Fire Trucks", count: respType === "fire" ? 2 : 0 },
-                              { icon: "🚔", label: "Police", count: respType === "police" ? 2 : 0 },
-                            ].filter(r => r.count > 0).map(r => (
-                              <div key={r.label} style={{
-                                flex: 1, background: "var(--surface2)", borderRadius: 10, padding: "10px 12px",
-                                display: "flex", alignItems: "center", gap: 8, border: "1px solid var(--border)",
-                              }}>
-                                <span style={{ fontSize: 18 }}>{r.icon}</span>
-                                <div>
-                                  <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text)" }}>{r.count}</div>
-                                  <div style={{ fontSize: 9, color: "var(--muted)" }}>{r.label}</div>
-                                </div>
+                          {/* Response type */}
+                          <div style={{
+                            display: "flex", alignItems: "center", gap: 10,
+                            background: "var(--surface2)", borderRadius: 10, padding: "10px 14px",
+                            marginBottom: 14, border: "1px solid var(--border)",
+                          }}>
+                            <span style={{ fontSize: 22 }}>
+                              {respType === "fire" ? "🔥" : respType === "ambulance" ? "🚑" : respType === "police" ? "🚔" : respType === "rescue" ? "⛑️" : "📋"}
+                            </span>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", textTransform: "capitalize" }}>
+                                {respType === "unknown" ? "General Emergency" : `${respType} Response`}
                               </div>
-                            ))}
+                              <div style={{ fontSize: 10, color: "var(--muted)" }}>
+                                AI-classified response type
+                              </div>
+                            </div>
+                            <span style={{
+                              padding: "4px 10px", borderRadius: 8, fontSize: 10, fontWeight: 700,
+                              background: sev === "high" ? "rgba(255,45,45,0.1)" : "rgba(255,170,40,0.1)",
+                              color: sev === "high" ? "#ff6b6b" : "#ffaa28",
+                            }}>
+                              {sev === "high" ? "URGENT" : "STANDARD"}
+                            </span>
                           </div>
 
                           {/* Chat Button */}

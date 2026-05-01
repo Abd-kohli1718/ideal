@@ -497,7 +497,6 @@ export default function AdminPage() {
                     </AnimatePresence>
                   </div>
                 </motion.div>
-                </motion.div>
               );
             })}
           </AnimatePresence>
@@ -684,27 +683,56 @@ export default function AdminPage() {
       )}
 
       {/* === RESOURCES TAB === */}
-      {tab === "resources" && (
+      {tab === "resources" && (() => {
+        // Dynamic resource counts based on actual alert data
+        const dispatched = alerts.filter(a => a.status === "accepted" || a.status === "resolved");
+        const pending = alerts.filter(a => a.status === "active");
+
+        const ambActive = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "ambulance" && a.status !== "resolved").length;
+        const fireActive = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "fire" && a.status !== "resolved").length;
+        const policeActive = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "police" && a.status !== "resolved").length;
+        const rescueActive = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "rescue" && a.status !== "resolved").length;
+
+        return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Available Units */}
+          {/* Deployment Overview */}
           <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Available Response Units</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>📊 Deployment Overview</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 16 }}>
+              {[
+                { icon: "📤", label: "Dispatched", count: dispatched.length, color: "#ffaa28" },
+                { icon: "⏳", label: "Pending Review", count: pending.length, color: "#ff6b6b" },
+                { icon: "✅", label: "Resolved", count: alerts.filter(a => a.status === "resolved").length, color: "#4cd17f" },
+              ].map(s => (
+                <div key={s.label} style={{
+                  background: "var(--surface2)", borderRadius: 12, padding: 16, textAlign: "center",
+                  border: "1px solid var(--border)",
+                }}>
+                  <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.count}</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 500 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Active Response Units */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>🚨 Active Response Units</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
               {[
-                { icon: "🚑", name: "Ambulances", available: 12, total: 18, color: "#ff6b6b" },
-                { icon: "🚒", name: "Fire Trucks", available: 8, total: 12, color: "#ffaa28" },
-                { icon: "🚔", name: "PCR Vehicles", available: 24, total: 30, color: "#5b8def" },
-                { icon: "🚁", name: "Helicopters", available: 2, total: 3, color: "#a78bfa" },
-                { icon: "⛑️", name: "NDRF Teams", available: 4, total: 6, color: "#4cd17f" },
-                { icon: "🚐", name: "Rescue Vans", available: 6, total: 10, color: "#f59e0b" },
+                { icon: "🚑", name: "Ambulances", deployed: ambActive, color: "#ff6b6b" },
+                { icon: "🚒", name: "Fire Trucks", deployed: fireActive, color: "#ffaa28" },
+                { icon: "🚔", name: "Police Units", deployed: policeActive, color: "#5b8def" },
+                { icon: "⛑️", name: "Rescue Teams", deployed: rescueActive, color: "#4cd17f" },
               ].map(u => (
                 <div key={u.name} style={{
                   background: "var(--surface2)", borderRadius: 12, padding: 14, textAlign: "center",
-                  border: "1px solid var(--border)",
+                  border: `1px solid ${u.deployed > 0 ? `${u.color}33` : "var(--border)"}`,
                 }}>
                   <div style={{ fontSize: 24, marginBottom: 6 }}>{u.icon}</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: u.color }}>{u.available}</div>
-                  <div style={{ fontSize: 9, color: "var(--muted)", marginBottom: 2 }}>of {u.total} total</div>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: u.deployed > 0 ? u.color : "var(--muted)" }}>{u.deployed}</div>
+                  <div style={{ fontSize: 9, color: "var(--muted)", marginBottom: 2 }}>active missions</div>
                   <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text2)" }}>{u.name}</div>
                 </div>
               ))}
@@ -777,7 +805,8 @@ export default function AdminPage() {
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* === ANALYTICS TAB === */}
       {tab === "analytics" && (

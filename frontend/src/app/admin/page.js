@@ -684,91 +684,116 @@ export default function AdminPage() {
 
       {/* === RESOURCES TAB === */}
       {tab === "resources" && (() => {
-        // Dynamic resource counts based on actual alert data
-        const dispatched = alerts.filter(a => a.status === "accepted" || a.status === "resolved");
-        const pending = alerts.filter(a => a.status === "active");
+        const ambDeployed = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "ambulance" && a.status !== "resolved").length;
+        const fireDeployed = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "fire" && a.status !== "resolved").length;
+        const policeDeployed = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "police" && a.status !== "resolved").length;
+        const rescueDeployed = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "rescue" && a.status !== "resolved").length;
 
-        const ambActive = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "ambulance" && a.status !== "resolved").length;
-        const fireActive = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "fire" && a.status !== "resolved").length;
-        const policeActive = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "police" && a.status !== "resolved").length;
-        const rescueActive = alerts.filter(a => (a.triage_result?.response_type || a.response_type) === "rescue" && a.status !== "resolved").length;
+        const units = [
+          { icon: "🚑", name: "Ambulances", deployed: ambDeployed, total: 18, color: "#ff6b6b", gradient: "linear-gradient(135deg, #ff6b6b, #ff2d2d)" },
+          { icon: "🚒", name: "Fire Trucks", deployed: fireDeployed, total: 12, color: "#ffaa28", gradient: "linear-gradient(135deg, #ffaa28, #ff8c00)" },
+          { icon: "🚔", name: "Police Patrol Cars", deployed: policeDeployed, total: 30, color: "#5b8def", gradient: "linear-gradient(135deg, #5b8def, #3b5ec9)" },
+          { icon: "⛑️", name: "NDRF Rescue Teams", deployed: rescueDeployed, total: 6, color: "#4cd17f", gradient: "linear-gradient(135deg, #4cd17f, #2da85d)" },
+          { icon: "🚁", name: "Air Ambulances", deployed: 0, total: 3, color: "#a78bfa", gradient: "linear-gradient(135deg, #a78bfa, #7c3aed)" },
+          { icon: "🚐", name: "Disaster Relief Vans", deployed: 0, total: 10, color: "#f59e0b", gradient: "linear-gradient(135deg, #f59e0b, #d97706)" },
+        ];
+        const totalDeployed = units.reduce((s, u) => s + u.deployed, 0);
+        const totalAvailable = units.reduce((s, u) => s + (u.total - u.deployed), 0);
 
         return (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Deployment Overview */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>📊 Deployment Overview</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 16 }}>
-              {[
-                { icon: "📤", label: "Dispatched", count: dispatched.length, color: "#ffaa28" },
-                { icon: "⏳", label: "Pending Review", count: pending.length, color: "#ff6b6b" },
-                { icon: "✅", label: "Resolved", count: alerts.filter(a => a.status === "resolved").length, color: "#4cd17f" },
-              ].map(s => (
-                <div key={s.label} style={{
-                  background: "var(--surface2)", borderRadius: 12, padding: 16, textAlign: "center",
-                  border: "1px solid var(--border)",
-                }}>
-                  <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
-                  <div style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.count}</div>
-                  <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 500 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Active Response Units */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>🚨 Active Response Units</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
-              {[
-                { icon: "🚑", name: "Ambulances", deployed: ambActive, color: "#ff6b6b" },
-                { icon: "🚒", name: "Fire Trucks", deployed: fireActive, color: "#ffaa28" },
-                { icon: "🚔", name: "Police Units", deployed: policeActive, color: "#5b8def" },
-                { icon: "⛑️", name: "Rescue Teams", deployed: rescueActive, color: "#4cd17f" },
-              ].map(u => (
-                <div key={u.name} style={{
-                  background: "var(--surface2)", borderRadius: 12, padding: 14, textAlign: "center",
-                  border: `1px solid ${u.deployed > 0 ? `${u.color}33` : "var(--border)"}`,
-                }}>
-                  <div style={{ fontSize: 24, marginBottom: 6 }}>{u.icon}</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: u.deployed > 0 ? u.color : "var(--muted)" }}>{u.deployed}</div>
-                  <div style={{ fontSize: 9, color: "var(--muted)", marginBottom: 2 }}>active missions</div>
-                  <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text2)" }}>{u.name}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Nearby Facilities */}
-          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
-            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Key Facilities</h3>
+          {/* Summary */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
             {[
-              { icon: "🏥", name: "Victoria Hospital", dist: "2.1 km", beds: "45 beds free", type: "hospital" },
-              { icon: "🏥", name: "Manipal Hospital", dist: "4.3 km", beds: "28 beds free", type: "hospital" },
-              { icon: "🏥", name: "St. John's Medical", dist: "5.7 km", beds: "12 beds free", type: "hospital" },
-              { icon: "👮", name: "Ashok Nagar PS", dist: "1.8 km", beds: "PCR available", type: "police" },
-              { icon: "👮", name: "Koramangala PS", dist: "3.2 km", beds: "PCR available", type: "police" },
-              { icon: "🚒", name: "MG Road Fire Station", dist: "2.5 km", beds: "3 trucks", type: "fire" },
-              { icon: "🚒", name: "Jayanagar Fire Station", dist: "4.1 km", beds: "2 trucks", type: "fire" },
+              { label: "Total Fleet", value: units.reduce((s, u) => s + u.total, 0), icon: "🏢", color: "var(--text)" },
+              { label: "Deployed", value: totalDeployed, icon: "📤", color: "#ff6b6b" },
+              { label: "Available", value: totalAvailable, icon: "✅", color: "#4cd17f" },
+            ].map((s, i) => (
+              <motion.div key={s.label} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.06 }}
+                style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 14, padding: "16px 14px", textAlign: "center" }}>
+                <div style={{ fontSize: 12, marginBottom: 6 }}>{s.icon}</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: s.color, marginBottom: 2 }}>{s.value}</div>
+                <div style={{ fontSize: 10, color: "var(--muted)", fontWeight: 500 }}>{s.label}</div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Vertical Resource List */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 18, display: "flex", alignItems: "center", gap: 8 }}>
+              🚨 Response Unit Status
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {units.map((u, i) => {
+                const available = u.total - u.deployed;
+                const pct = (u.deployed / u.total) * 100;
+                return (
+                  <motion.div key={u.name} initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}
+                    style={{
+                      background: "var(--surface2)", borderRadius: 14, padding: "14px 18px",
+                      border: `1px solid ${u.deployed > 0 ? u.color + "30" : "var(--border)"}`,
+                    }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
+                      <div style={{
+                        width: 44, height: 44, borderRadius: 12,
+                        background: u.color + "15", border: "1px solid " + u.color + "25",
+                        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22,
+                      }}>{u.icon}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 2 }}>{u.name}</div>
+                        <div style={{ fontSize: 10, color: "var(--muted)" }}>
+                          {u.deployed > 0 ? `${u.deployed} deployed · ${available} standing by` : `All ${u.total} units standing by`}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 20, fontWeight: 800, color: u.deployed > 0 ? u.color : "#4cd17f" }}>{available}</div>
+                        <div style={{ fontSize: 9, color: "var(--muted)", fontWeight: 500 }}>available</div>
+                      </div>
+                    </div>
+                    <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                      <motion.div initial={{ width: 0 }} animate={{ width: pct + "%" }} transition={{ duration: 0.8, delay: 0.2 + i * 0.05 }}
+                        style={{ height: "100%", borderRadius: 2, background: u.gradient }} />
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Facilities */}
+          <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
+            <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>📍 Key Facilities</h3>
+            {[
+              { icon: "🏥", name: "Victoria Hospital", dist: "2.1 km", info: "Level I Trauma · 45 beds free", color: "#ff6b6b" },
+              { icon: "🏥", name: "Manipal Hospital", dist: "4.3 km", info: "Multi-Specialty · 28 beds free", color: "#ff6b6b" },
+              { icon: "🏥", name: "St. John's Medical", dist: "5.7 km", info: "Emergency Unit · 12 beds free", color: "#ff6b6b" },
+              { icon: "👮", name: "Ashok Nagar PS", dist: "1.8 km", info: "PCR + Beat patrol available", color: "#5b8def" },
+              { icon: "👮", name: "Koramangala PS", dist: "3.2 km", info: "PCR available", color: "#5b8def" },
+              { icon: "🚒", name: "MG Road Fire Station", dist: "2.5 km", info: "3 trucks · Aerial ladder", color: "#ffaa28" },
+              { icon: "🚒", name: "Jayanagar Fire Station", dist: "4.1 km", info: "2 trucks", color: "#ffaa28" },
             ].map((f, i) => (
               <div key={i} style={{
-                display: "flex", alignItems: "center", gap: 12, padding: "10px 0",
+                display: "flex", alignItems: "center", gap: 12, padding: "12px 0",
                 borderBottom: i < 6 ? "1px solid var(--border)" : "none",
               }}>
-                <span style={{ fontSize: 20, width: 36, textAlign: "center" }}>{f.icon}</span>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10,
+                  background: f.color + "12", border: "1px solid " + f.color + "20",
+                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
+                }}>{f.icon}</div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{f.name}</div>
-                  <div style={{ fontSize: 11, color: "var(--muted)" }}>{f.beds}</div>
+                  <div style={{ fontSize: 10, color: "var(--muted)" }}>{f.info}</div>
                 </div>
                 <span style={{
                   padding: "4px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600,
-                  background: "var(--surface2)", color: "var(--text2)",
+                  background: "var(--surface)", color: "var(--text2)", border: "1px solid var(--border)",
                 }}>{f.dist}</span>
               </div>
             ))}
           </div>
 
-          {/* Most Upvoted Reports */}
+          {/* Most Upvoted */}
           {topUpvoted.length > 0 && (
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
               <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>🔥 Most Upvoted Reports</h3>

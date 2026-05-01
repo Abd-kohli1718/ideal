@@ -23,9 +23,14 @@ async function createAlert(req, res) {
   // Location is optional — null means "Location off"
   const hasLocation = latitude !== undefined && latitude !== null && longitude !== undefined && longitude !== null;
 
-  const alertType = ['sos_button', 'social_post', 'manual_form', 'audio_sos', 'media_post'].includes(type)
-    ? type
-    : 'manual_form';
+  // DB only allows: sos_button, social_post, manual_form
+  // Map audio/media posts to social_post for DB compatibility
+  let alertType = type;
+  if (alertType === 'audio_sos' || alertType === 'media_post') {
+    alertType = 'social_post';
+  } else if (!['sos_button', 'social_post', 'manual_form'].includes(alertType)) {
+    alertType = 'manual_form';
+  }
 
   try {
     const supabase = getServiceClient();

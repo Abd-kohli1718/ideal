@@ -26,7 +26,7 @@ export default function CreatePost({ open, onClose, onSubmit }) {
     try {
       await onSubmit?.({
         caption: caption.trim(),
-        type: tab === "audio" ? "audio_sos" : "social_post",
+        type: "social_post",
         media: mediaFile,
         audio: audioBlob,
       });

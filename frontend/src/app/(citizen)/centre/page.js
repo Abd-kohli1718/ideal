@@ -94,9 +94,9 @@ export default function CentrePage() {
   };
 
   const handleCreatePost = async ({ caption, type, media, audio }) => {
+    const tid = toast.loading("Posting...");
     try {
       let msg = caption || "";
-      const tid = toast.loading("Posting...");
 
       // Get user's real location
       let latitude = null;
@@ -109,7 +109,7 @@ export default function CentrePage() {
         latitude = pos.coords.latitude;
         longitude = pos.coords.longitude;
       } catch {
-        // Location not available — that's okay, we won't fake it
+        // Location not available — that's okay
       }
 
       if (media || audio) {
@@ -123,13 +123,18 @@ export default function CentrePage() {
           if (!error) {
             const { data: { publicUrl } } = sb.storage.from("media").getPublicUrl(p);
             msg += `\n\n[MEDIA:${publicUrl}]`;
+          } else {
+            console.error("Storage upload error:", error);
+            toast.error("Media upload failed — posting text only", { id: tid });
           }
-        } catch {}
+        } catch (uploadErr) {
+          console.error("Upload error:", uploadErr);
+        }
       }
 
       const body = {
-        type: type || "social_post",
-        message: msg.trim(),
+        type: "social_post",
+        message: msg.trim() || "Media alert",
       };
 
       // Only include location if we have it
@@ -144,7 +149,9 @@ export default function CentrePage() {
       });
       toast.success("Posted!", { id: tid });
       fetchPosts();
-    } catch (e) { toast.error(e.message || "Failed"); }
+    } catch (e) {
+      toast.error(e.message || "Failed to post", { id: tid });
+    }
   };
 
   const handleSimulate = async () => {

@@ -114,18 +114,18 @@ export default function CentrePage() {
 
       if (media || audio) {
         try {
-          const { getSupabaseBrowser } = await import("@/lib/supabase");
-          const sb = getSupabaseBrowser();
-          const f = media || audio;
-          const ext = media ? (media.name.split('.').pop() || 'jpg') : 'webm';
-          const p = `${media ? 'uploads' : 'audio'}/${Date.now()}_${Math.random().toString(36).substr(2,6)}.${ext}`;
-          const { error } = await sb.storage.from("media").upload(p, f);
-          if (!error) {
-            const { data: { publicUrl } } = sb.storage.from("media").getPublicUrl(p);
-            msg += `\n\n[MEDIA:${publicUrl}]`;
+          const formData = new FormData();
+          formData.append("file", media || audio);
+          const API = process.env.NEXT_PUBLIC_API_URL || "";
+          const uploadRes = await fetch(`${API}/api/upload`, {
+            method: "POST",
+            body: formData,
+          });
+          const uploadData = await uploadRes.json();
+          if (uploadData.success && uploadData.url) {
+            msg += `\n\n[MEDIA:${uploadData.url}]`;
           } else {
-            console.error("Storage upload error:", error);
-            toast.error("Media upload failed — posting text only", { id: tid });
+            console.error("Upload failed:", uploadData.error);
           }
         } catch (uploadErr) {
           console.error("Upload error:", uploadErr);

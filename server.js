@@ -8,6 +8,7 @@ const authRoutes = require('./src/routes/auth');
 const alertsRoutes = require('./src/routes/alerts');
 const messagesRoutes = require('./src/routes/messages');
 const simulateRoutes = require('./src/routes/simulate');
+const uploadRoutes = require('./src/routes/upload');
 const { locationRouter, respondersListRouter } = require('./src/routes/responder');
 
 const app = express();
@@ -35,7 +36,7 @@ app.use(
 );
 
 // === Body size limit (C4/M4) ===
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 // === Rate limiting (C6) ===
 const authLimiter = rateLimit({
@@ -62,6 +63,7 @@ app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/alerts', messagesRoutes);
 app.use('/api/simulate', simulateRoutes);
+app.use('/api/upload', uploadRoutes);
 app.use('/api/responder', locationRouter);
 app.use('/api/responders', respondersListRouter);
 

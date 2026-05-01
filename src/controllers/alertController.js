@@ -227,7 +227,7 @@ async function dispatchAlert(req, res) {
 
     const { error: uErr } = await supabase
       .from('alerts')
-      .update({ status: 'dispatched' })
+      .update({ status: 'accepted' })
       .eq('id', id);
 
     if (uErr) {

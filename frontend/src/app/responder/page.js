@@ -80,12 +80,11 @@ export default function ResponderPage() {
   };
 
   const filtered = alerts.filter(a => {
-    // Responders only see admin-dispatched or already-accepted alerts
-    if (filter === "active") return a.status === "dispatched" || a.status === "accepted";
+    if (filter === "active") return a.status === "active" || a.status === "accepted";
     return a.status === "resolved";
   });
 
-  const activeCount = alerts.filter(a => a.status === "dispatched" || a.status === "accepted").length;
+  const activeCount = alerts.filter(a => a.status === "active" || a.status === "accepted").length;
   const resolvedCount = alerts.filter(a => a.status === "resolved").length;
   const myAccepted = alerts.filter(a => a.status === "accepted").length;
 
@@ -278,10 +277,10 @@ export default function ResponderPage() {
                         </span>
                         <span style={{
                           padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600,
-                          background: a.status === "dispatched" ? "rgba(91,141,239,0.1)" : a.status === "accepted" ? "rgba(255,170,40,0.1)" : a.status === "resolved" ? "rgba(76,209,127,0.1)" : "rgba(255,45,45,0.1)",
-                          color: a.status === "dispatched" ? "#5b8def" : a.status === "accepted" ? "#ffaa28" : a.status === "resolved" ? "#4cd17f" : "#ff6b6b",
+                          background: a.status === "accepted" ? "rgba(255,170,40,0.1)" : a.status === "resolved" ? "rgba(76,209,127,0.1)" : "rgba(255,45,45,0.1)",
+                          color: a.status === "accepted" ? "#ffaa28" : a.status === "resolved" ? "#4cd17f" : "#ff6b6b",
                         }}>
-                          {a.status === "dispatched" ? "Dispatched" : a.status === "accepted" ? "In Progress" : a.status === "resolved" ? "Resolved" : "Pending"}
+                          {a.status === "accepted" ? "In Progress" : a.status === "resolved" ? "Resolved" : "Pending"}
                         </span>
                         <span style={{ fontSize: 10, color: "var(--muted)" }}>{timeAgo(a.created_at)}</span>
                       </div>
@@ -409,7 +408,7 @@ export default function ResponderPage() {
                           {/* Action buttons */}
                           {a.status !== "resolved" && (
                             <div style={{ display: "flex", gap: 8 }} onClick={e => e.stopPropagation()}>
-                              {a.status === "active" && (
+                              {(a.status === "active" || a.status === "accepted") && a.status !== "accepted" && (
                                 <button
                                   onClick={() => handleAccept(a.id)}
                                   style={{

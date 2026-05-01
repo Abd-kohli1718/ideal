@@ -44,8 +44,7 @@ function SeverityChip({ severity }) {
 function StatusChip({ status }) {
   const map = {
     active: { color: "#ff6b6b", bg: "rgba(255,45,45,0.1)", label: "Active" },
-    dispatched: { color: "#5b8def", bg: "rgba(91,141,239,0.1)", label: "Dispatched" },
-    accepted: { color: "#ffaa28", bg: "rgba(255,170,40,0.1)", label: "In Progress" },
+    accepted: { color: "#ffaa28", bg: "rgba(255,170,40,0.1)", label: "Dispatched" },
     resolved: { color: "#4cd17f", bg: "rgba(76,209,127,0.1)", label: "Resolved" },
   };
   const s = map[status] || map.active;
@@ -121,7 +120,7 @@ export default function AdminPage() {
 
   const handleDispatch = async (alertId) => {
     try {
-      await apiFetch(`/api/alerts/${alertId}/dispatch`, { method: "PATCH" });
+      await apiFetch(`/api/alerts/${alertId}/accept`, { method: "PATCH" });
       const total = dispatchRes.ambulances + dispatchRes.fire + dispatchRes.police;
       if (total === 0) {
         toast.success("Alert dispatched to responders");
@@ -264,13 +263,35 @@ export default function AdminPage() {
 
       {/* === EMERGENCIES TAB === */}
       {tab === "emergencies" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <AnimatePresence>
-            {filtered.map((a, i) => {
-              const sev = a.triage_result?.severity || a.severity || "low";
-              const respType = a.triage_result?.response_type || a.response_type || "unknown";
-              const isExpanded = expandedId === a.id;
-              const { cleanMsg, mediaUrls } = parseMedia(a.message || "");
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+          {/* ---- SOS REPORTS SECTION ---- */}
+          <div>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8, marginBottom: 12,
+              padding: "10px 16px", borderRadius: 12,
+              background: "linear-gradient(135deg, rgba(255,45,45,0.1), rgba(255,45,45,0.03))",
+              border: "1px solid rgba(255,45,45,0.2)",
+            }}>
+              <span style={{ fontSize: 18 }}>🚨</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#ff6b6b" }}>SOS Emergency Reports</div>
+                <div style={{ fontSize: 10, color: "var(--muted)" }}>Direct emergency button activations — highest priority</div>
+              </div>
+              <span style={{
+                background: "rgba(255,45,45,0.2)", padding: "3px 10px", borderRadius: 20,
+                fontSize: 11, fontWeight: 800, color: "#ff6b6b",
+              }}>
+                {filtered.filter(a => a.type === 'sos_button' || a.type === 'audio_sos').length}
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <AnimatePresence>
+                {filtered.filter(a => a.type === 'sos_button' || a.type === 'audio_sos').map((a, i) => {
+                  const sev = a.triage_result?.severity || a.severity || "low";
+                  const respType = a.triage_result?.response_type || a.response_type || "unknown";
+                  const isExpanded = expandedId === a.id;
+                  const { cleanMsg, mediaUrls } = parseMedia(a.message || "");
 
               return (
                 <motion.div
@@ -476,16 +497,189 @@ export default function AdminPage() {
                     </AnimatePresence>
                   </div>
                 </motion.div>
+                </motion.div>
               );
             })}
           </AnimatePresence>
-          {filtered.length === 0 && (
-            <div style={{ textAlign: "center", padding: 60, color: "var(--muted)" }}>
-              <div style={{ fontSize: 40, opacity: 0.2, marginBottom: 12 }}>🛡️</div>
-              <div style={{ fontSize: 14, fontWeight: 600 }}>All clear</div>
-              <div style={{ fontSize: 12, marginTop: 4 }}>No active incidents to display</div>
+          {filtered.filter(a => a.type === 'sos_button' || a.type === 'audio_sos').length === 0 && (
+            <div style={{ textAlign: "center", padding: 30, color: "var(--muted)", background: "var(--surface)", borderRadius: 14, border: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 28, opacity: 0.3, marginBottom: 8 }}>🛡️</div>
+              <div style={{ fontSize: 12, fontWeight: 600 }}>No SOS emergencies</div>
             </div>
           )}
+            </div>
+          </div>
+
+          {/* ---- COMMUNITY REPORTS SECTION ---- */}
+          <div>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8, marginBottom: 12,
+              padding: "10px 16px", borderRadius: 12,
+              background: "linear-gradient(135deg, rgba(91,141,239,0.1), rgba(91,141,239,0.03))",
+              border: "1px solid rgba(91,141,239,0.2)",
+            }}>
+              <span style={{ fontSize: 18 }}>📢</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#5b8def" }}>ResQ Centre Posts</div>
+                <div style={{ fontSize: 10, color: "var(--muted)" }}>Community-reported incidents & social alerts</div>
+              </div>
+              <span style={{
+                background: "rgba(91,141,239,0.2)", padding: "3px 10px", borderRadius: 20,
+                fontSize: 11, fontWeight: 800, color: "#5b8def",
+              }}>
+                {filtered.filter(a => a.type !== 'sos_button' && a.type !== 'audio_sos').length}
+              </span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <AnimatePresence>
+                {filtered.filter(a => a.type !== 'sos_button' && a.type !== 'audio_sos').map((a, i) => {
+                  const sev = a.triage_result?.severity || a.severity || "low";
+                  const respType = a.triage_result?.response_type || a.response_type || "unknown";
+                  const isExpanded = expandedId === a.id;
+                  const { cleanMsg, mediaUrls } = parseMedia(a.message || "");
+
+                  return (
+                    <motion.div
+                      key={a.id}
+                      layout
+                      initial={{ opacity: 0, y: 12 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                      style={{
+                        background: "var(--surface)", border: `1px solid ${sev === "high" ? "rgba(255,45,45,0.2)" : "var(--border)"}`,
+                        borderRadius: 16, padding: 0, overflow: "hidden",
+                        boxShadow: sev === "high" ? "0 0 20px rgba(255,45,45,0.06)" : "none",
+                      }}
+                    >
+                      <div style={{
+                        height: 3,
+                        background: sev === "high" ? "linear-gradient(90deg, #ff2d2d, #ff6b6b)" :
+                          sev === "medium" ? "linear-gradient(90deg, #ffaa28, #ffd93d)" :
+                          "linear-gradient(90deg, #4cd17f, #86efac)",
+                      }} />
+                      <div style={{ padding: "16px 20px" }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                          <div style={{
+                            width: 40, height: 40, borderRadius: 12,
+                            background: SEV_COLORS[sev]?.bg || "var(--surface2)",
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            fontSize: 18, flexShrink: 0,
+                          }}>
+                            {RESPONSE_ICONS[respType] || "📋"}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 6, lineHeight: 1.4 }}>
+                              {cleanMsg}
+                            </div>
+                            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                              <SeverityChip severity={sev} />
+                              <StatusChip status={a.status} />
+                              <span style={{ fontSize: 10, color: "var(--muted)" }}>{timeAgo(a.created_at)}</span>
+                              {a.latitude ? (
+                                <span style={{ fontSize: 10, color: "var(--muted)" }}>
+                                  📍 {Number(a.latitude).toFixed(3)}, {Number(a.longitude).toFixed(3)}
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: 10, color: "var(--muted)", fontStyle: "italic" }}>📍 Location off</span>
+                              )}
+                              {a.user_name && (
+                                <span style={{ fontSize: 10, color: "var(--muted)" }}>👤 {a.user_name}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                            <button
+                              onClick={() => setExpandedId(expandedId === a.id ? null : a.id)}
+                              style={{
+                                background: isExpanded ? "rgba(91,141,239,0.1)" : "var(--surface2)",
+                                border: "1px solid var(--border)", borderRadius: 10,
+                                padding: "8px 14px", fontSize: 11, fontWeight: 600,
+                                color: isExpanded ? "#5b8def" : "var(--text2)",
+                                cursor: "pointer", fontFamily: "inherit", whiteSpace: "nowrap",
+                              }}
+                            >
+                              {isExpanded ? "Close" : "🔍 Review"}
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setChatAlertId(a.id); }}
+                              style={{
+                                background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)",
+                                borderRadius: 10, padding: "8px 10px", fontSize: 11,
+                                cursor: "pointer", fontFamily: "inherit", color: "#5b8def",
+                              }}
+                            >
+                              💬
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Media preview */}
+                        {mediaUrls.length > 0 && (
+                          <div style={{ marginTop: 12, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)" }}>
+                            {mediaUrls.map((url, j) => (
+                              <img key={j} src={url} alt="incident" style={{
+                                width: "100%", maxHeight: 220, objectFit: "cover", display: "block",
+                              }} />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Expanded: quick dispatch */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              style={{ overflow: "hidden" }}
+                            >
+                              <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+                                <div style={{ background: "var(--surface2)", borderRadius: 12, padding: 14, marginBottom: 12, fontSize: 12, lineHeight: 1.6 }}>
+                                  <div style={{ marginBottom: 8 }}><strong>Type:</strong> {a.type?.replace(/_/g, " ") || "Unknown"}</div>
+                                  <div style={{ marginBottom: 8 }}><strong>Severity:</strong> <span style={{ color: SEV_COLORS[sev]?.text }}>{SEV_COLORS[sev]?.label}</span></div>
+                                  <div style={{ marginBottom: 8 }}><strong>Response:</strong> {RESPONSE_ICONS[respType]} {respType}</div>
+                                  <div><strong>Location:</strong> {a.latitude ? `${Number(a.latitude).toFixed(4)}, ${Number(a.longitude).toFixed(4)}` : "Location off"}</div>
+                                </div>
+                                {a.latitude && (
+                                  <div style={{ borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)", marginBottom: 12, height: 140 }}>
+                                    <iframe
+                                      title="Incident Location"
+                                      width="100%" height="140" frameBorder="0" scrolling="no"
+                                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(a.longitude)-0.008}%2C${Number(a.latitude)-0.005}%2C${Number(a.longitude)+0.008}%2C${Number(a.latitude)+0.005}&layer=mapnik&marker=${a.latitude}%2C${a.longitude}`}
+                                      style={{ display: "block" }}
+                                    />
+                                  </div>
+                                )}
+                                <button
+                                  onClick={() => handleDispatch(a.id)}
+                                  style={{
+                                    width: "100%", padding: "12px 20px", borderRadius: 12,
+                                    border: "none", cursor: "pointer", fontFamily: "inherit",
+                                    fontSize: 13, fontWeight: 700, color: "#fff",
+                                    background: "linear-gradient(135deg, #5b8def, #3b5ec9)",
+                                    boxShadow: "0 4px 16px rgba(91,141,239,0.3)",
+                                  }}
+                                >
+                                  🚀 Send to Responders
+                                </button>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+              {filtered.filter(a => a.type !== 'sos_button' && a.type !== 'audio_sos').length === 0 && (
+                <div style={{ textAlign: "center", padding: 30, color: "var(--muted)", background: "var(--surface)", borderRadius: 14, border: "1px solid var(--border)" }}>
+                  <div style={{ fontSize: 28, opacity: 0.3, marginBottom: 8 }}>📡</div>
+                  <div style={{ fontSize: 12, fontWeight: 600 }}>No community reports</div>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       )}
 

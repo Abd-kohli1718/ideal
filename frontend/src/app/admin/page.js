@@ -120,10 +120,9 @@ export default function AdminPage() {
 
   const handleDispatch = async (alertId, cancelStatus) => {
     try {
-      if (cancelStatus === "resolved") {
-        // Cancel: first accept then resolve
-        await apiFetch(`/api/alerts/${alertId}/accept`, { method: "PATCH" });
-        await apiFetch(`/api/alerts/${alertId}/resolve`, { method: "PATCH" });
+      if (cancelStatus === "delete") {
+        // Fully delete the alert from the system
+        await apiFetch(`/api/alerts/${alertId}`, { method: "DELETE" });
       } else {
         await apiFetch(`/api/alerts/${alertId}/accept`, { method: "PATCH" });
         const total = dispatchRes.ambulances + dispatchRes.fire + dispatchRes.police;
@@ -453,7 +452,7 @@ export default function AdminPage() {
                                 <div style={{ display: "flex", gap: 10 }}>
                                   <button
                                     onClick={() => {
-                                      handleDispatch(a.id, "resolved");
+                                      handleDispatch(a.id, "delete");
                                       toast.success("Alert cancelled ✗");
                                       setExpandedId(null);
                                     }}
@@ -685,7 +684,7 @@ export default function AdminPage() {
                                   <div style={{ display: "flex", gap: 10 }}>
                                     <button
                                       onClick={() => {
-                                        handleDispatch(a.id, "resolved");
+                                        handleDispatch(a.id, "delete");
                                         toast.success("Alert cancelled ✗");
                                         setExpandedId(null);
                                       }}

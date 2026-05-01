@@ -310,6 +310,34 @@ async function resolveAlert(req, res) {
   }
 }
 
+/**
+ * DELETE /api/alerts/:id — Completely remove an alert from the system
+ * Used by admin to cancel/dismiss false alerts
+ */
+async function deleteAlert(req, res) {
+  const { id } = req.params;
+  try {
+    const supabase = getServiceClient();
+
+    // Delete in order: triage_results, messages, assignments, then alert
+    await supabase.from('triage_results').delete().eq('alert_id', id);
+    await supabase.from('messages').delete().eq('alert_id', id);
+    await supabase.from('responder_assignments').delete().eq('alert_id', id);
+
+    const { error } = await supabase.from('alerts').delete().eq('id', id);
+
+    if (error) {
+      console.error('deleteAlert', error);
+      return res.status(500).json({ success: false, error: 'Failed to delete alert' });
+    }
+
+    return res.json({ success: true, data: { id, deleted: true } });
+  } catch (e) {
+    console.error('deleteAlert', e);
+    return res.status(500).json({ success: false, error: 'Failed to delete alert' });
+  }
+}
+
 module.exports = {
   createAlert,
   listAlerts,
@@ -317,4 +345,5 @@ module.exports = {
   acceptAlert,
   dispatchAlert,
   resolveAlert,
+  deleteAlert,
 };

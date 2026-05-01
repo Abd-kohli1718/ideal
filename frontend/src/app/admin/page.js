@@ -681,18 +681,73 @@ export default function AdminPage() {
                                     />
                                   </div>
                                 )}
-                                <button
-                                  onClick={() => handleDispatch(a.id)}
-                                  style={{
-                                    width: "100%", padding: "12px 20px", borderRadius: 12,
-                                    border: "none", cursor: "pointer", fontFamily: "inherit",
-                                    fontSize: 13, fontWeight: 700, color: "#fff",
-                                    background: "linear-gradient(135deg, #5b8def, #3b5ec9)",
-                                    boxShadow: "0 4px 16px rgba(91,141,239,0.3)",
-                                  }}
-                                >
-                                  🚀 Send to Responders
-                                </button>
+                                {!verifiedIds.has(a.id) ? (
+                                  <div style={{ display: "flex", gap: 10 }}>
+                                    <button
+                                      onClick={() => {
+                                        handleDispatch(a.id, "resolved");
+                                        toast.success("Alert cancelled ✗");
+                                        setExpandedId(null);
+                                      }}
+                                      style={{
+                                        flex: 1, padding: "12px 16px", borderRadius: 12,
+                                        border: "1px solid rgba(255,45,45,0.3)", cursor: "pointer", fontFamily: "inherit",
+                                        fontSize: 13, fontWeight: 700, color: "#ff6b6b",
+                                        background: "rgba(255,45,45,0.08)",
+                                      }}
+                                    >
+                                      ✕ Cancel
+                                    </button>
+                                    <button
+                                      onClick={() => { setVerifiedIds(prev => new Set([...prev, a.id])); toast.success("Verified ✓"); }}
+                                      style={{
+                                        flex: 1, padding: "12px 16px", borderRadius: 12,
+                                        border: "none", cursor: "pointer", fontFamily: "inherit",
+                                        fontSize: 13, fontWeight: 700, color: "#fff",
+                                        background: "linear-gradient(135deg, #5b8def, #3b5ec9)",
+                                        boxShadow: "0 4px 16px rgba(91,141,239,0.3)",
+                                      }}
+                                    >
+                                      ✓ Verify & Assign
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                                      <span style={{ fontSize: 10, fontWeight: 700, color: "#4cd17f", background: "rgba(76,209,127,0.1)", padding: "3px 10px", borderRadius: 20 }}>✓ VERIFIED</span>
+                                      <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", margin: 0 }}>Assign Resources</p>
+                                    </div>
+                                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+                                      {[
+                                        { key: "ambulances", icon: "🚑", label: "Ambulances" },
+                                        { key: "fire", icon: "🚒", label: "Fire Trucks" },
+                                        { key: "police", icon: "🚔", label: "Police" },
+                                      ].map(r => (
+                                        <div key={r.key} style={{ background: "var(--surface2)", borderRadius: 12, padding: 12, textAlign: "center", border: "1px solid var(--border)" }}>
+                                          <div style={{ fontSize: 22, marginBottom: 4 }}>{r.icon}</div>
+                                          <div style={{ fontSize: 10, color: "var(--muted)", marginBottom: 8, fontWeight: 500 }}>{r.label}</div>
+                                          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+                                            <button onClick={() => setDispatchRes(p => ({ ...p, [r.key]: Math.max(0, p[r.key] - 1) }))} style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>-</button>
+                                            <span style={{ fontSize: 18, fontWeight: 800, minWidth: 24, textAlign: "center", color: "var(--text)" }}>{dispatchRes[r.key]}</span>
+                                            <button onClick={() => setDispatchRes(p => ({ ...p, [r.key]: p[r.key] + 1 }))} style={{ width: 28, height: 28, borderRadius: 8, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", fontSize: 14, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                    <button
+                                      onClick={() => handleDispatch(a.id)}
+                                      style={{
+                                        width: "100%", padding: "12px 20px", borderRadius: 12,
+                                        border: "none", cursor: "pointer", fontFamily: "inherit",
+                                        fontSize: 13, fontWeight: 700, color: "#fff",
+                                        background: "linear-gradient(135deg, #ff2d2d, #e60000)",
+                                        boxShadow: "0 4px 16px rgba(255,45,45,0.3)",
+                                      }}
+                                    >
+                                      🚀 Deploy to Responders
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             </motion.div>
                           )}

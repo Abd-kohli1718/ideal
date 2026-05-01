@@ -118,20 +118,26 @@ export default function AdminPage() {
   const resolved = alerts.filter(a => a.status === "resolved").length;
   const critical = alerts.filter(a => (a.triage_result?.severity || a.severity) === "high").length;
 
-  const handleDispatch = async (alertId) => {
+  const handleDispatch = async (alertId, cancelStatus) => {
     try {
-      await apiFetch(`/api/alerts/${alertId}/accept`, { method: "PATCH" });
-      const total = dispatchRes.ambulances + dispatchRes.fire + dispatchRes.police;
-      if (total === 0) {
-        toast.success("Alert dispatched to responders");
+      if (cancelStatus === "resolved") {
+        // Cancel: first accept then resolve
+        await apiFetch(`/api/alerts/${alertId}/accept`, { method: "PATCH" });
+        await apiFetch(`/api/alerts/${alertId}/resolve`, { method: "PATCH" });
       } else {
-        toast.success(`Dispatched ${total} unit(s) to responders`);
+        await apiFetch(`/api/alerts/${alertId}/accept`, { method: "PATCH" });
+        const total = dispatchRes.ambulances + dispatchRes.fire + dispatchRes.police;
+        if (total === 0) {
+          toast.success("Alert dispatched to responders");
+        } else {
+          toast.success(`Dispatched ${total} unit(s) to responders`);
+        }
       }
       setExpandedId(null);
       setDispatchRes({ ambulances: 0, fire: 0, police: 0 });
       fetchAlerts();
     } catch (err) {
-      toast.error(err.message || "Failed to dispatch");
+      toast.error(err.message || "Failed");
     }
   };
 
@@ -388,15 +394,17 @@ export default function AdminPage() {
                       </div>
                     </div>
 
-                    {/* Media preview — always shown prominently */}
+                    {/* Media preview — images, videos, audio */}
                     {mediaUrls.length > 0 && (
                       <div style={{ marginTop: 12, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)" }}>
-                        {mediaUrls.map((url, j) => (
-                          <img key={j} src={url} alt="incident" style={{
-                            width: "100%", maxHeight: 220, objectFit: "cover",
-                            display: "block",
-                          }} />
-                        ))}
+                        {mediaUrls.map((url, j) => {
+                          if (url.match(/\.(mp4|webm|mov)$/i)) {
+                            return <video key={j} src={url} controls style={{ width: "100%", maxHeight: 220, display: "block" }} />;
+                          } else if (url.match(/\.(mp3|wav|ogg|webm|m4a)$/i) || url.includes("audio")) {
+                            return <div key={j} style={{ padding: "12px 16px", background: "var(--surface2)" }}><audio src={url} controls style={{ width: "100%", height: 36 }} /></div>;
+                          }
+                          return <img key={j} src={url} alt="incident" style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }} />;
+                        })}
                       </div>
                     )}
 
@@ -442,18 +450,35 @@ export default function AdminPage() {
                                   </div>
                                 )}
 
-                                <button
-                                  onClick={() => { setVerifiedIds(prev => new Set([...prev, a.id])); toast.success("Incident verified ✓"); }}
-                                  style={{
-                                    width: "100%", padding: "12px 20px", borderRadius: 12,
-                                    border: "none", cursor: "pointer", fontFamily: "inherit",
-                                    fontSize: 13, fontWeight: 700, color: "#fff",
-                                    background: "linear-gradient(135deg, #5b8def, #3b5ec9)",
-                                    boxShadow: "0 4px 16px rgba(91,141,239,0.3)",
-                                  }}
-                                >
-                                  ✓ Verify Incident
-                                </button>
+                                <div style={{ display: "flex", gap: 10 }}>
+                                  <button
+                                    onClick={() => {
+                                      handleDispatch(a.id, "resolved");
+                                      toast.success("Alert cancelled ✗");
+                                      setExpandedId(null);
+                                    }}
+                                    style={{
+                                      flex: 1, padding: "12px 16px", borderRadius: 12,
+                                      border: "1px solid rgba(255,45,45,0.3)", cursor: "pointer", fontFamily: "inherit",
+                                      fontSize: 13, fontWeight: 700, color: "#ff6b6b",
+                                      background: "rgba(255,45,45,0.08)",
+                                    }}
+                                  >
+                                    ✕ Cancel Alert
+                                  </button>
+                                  <button
+                                    onClick={() => { setVerifiedIds(prev => new Set([...prev, a.id])); toast.success("Incident verified ✓"); }}
+                                    style={{
+                                      flex: 1, padding: "12px 16px", borderRadius: 12,
+                                      border: "none", cursor: "pointer", fontFamily: "inherit",
+                                      fontSize: 13, fontWeight: 700, color: "#fff",
+                                      background: "linear-gradient(135deg, #5b8def, #3b5ec9)",
+                                      boxShadow: "0 4px 16px rgba(91,141,239,0.3)",
+                                    }}
+                                  >
+                                    ✓ Verify & Assign
+                                  </button>
+                                </div>
                               </>
                             ) : (
                               /* === DEPLOY STEP: Resource assignment === */
@@ -619,11 +644,14 @@ export default function AdminPage() {
                         {/* Media preview */}
                         {mediaUrls.length > 0 && (
                           <div style={{ marginTop: 12, borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)" }}>
-                            {mediaUrls.map((url, j) => (
-                              <img key={j} src={url} alt="incident" style={{
-                                width: "100%", maxHeight: 220, objectFit: "cover", display: "block",
-                              }} />
-                            ))}
+                            {mediaUrls.map((url, j) => {
+                              if (url.match(/\.(mp4|webm|mov)$/i)) {
+                                return <video key={j} src={url} controls style={{ width: "100%", maxHeight: 220, display: "block" }} />;
+                              } else if (url.match(/\.(mp3|wav|ogg|webm|m4a)$/i) || url.includes("audio")) {
+                                return <div key={j} style={{ padding: "12px 16px", background: "var(--surface2)" }}><audio src={url} controls style={{ width: "100%", height: 36 }} /></div>;
+                              }
+                              return <img key={j} src={url} alt="incident" style={{ width: "100%", maxHeight: 220, objectFit: "cover", display: "block" }} />;
+                            })}
                           </div>
                         )}
 

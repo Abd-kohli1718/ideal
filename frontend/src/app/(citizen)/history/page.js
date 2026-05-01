@@ -76,27 +76,33 @@ export default function HistoryPage() {
               style={{ padding: 0, cursor: "pointer", overflow: "hidden" }}
               onClick={() => setSelectedId(isOpen ? null : a.id)}
             >
-              {/* Image preview at top */}
-              {mediaUrls.length > 0 && (
-                <div style={{ position: "relative" }}>
-                  <img
-                    src={mediaUrls[0]}
-                    alt="Report media"
-                    style={{
-                      width: "100%", height: 160, objectFit: "cover",
-                      display: "block",
-                    }}
-                  />
-                  {mediaUrls.length > 1 && (
-                    <span style={{
-                      position: "absolute", bottom: 8, right: 8,
-                      background: "rgba(0,0,0,0.7)", color: "#fff",
-                      padding: "3px 8px", borderRadius: 8, fontSize: 10,
-                      fontWeight: 600,
-                    }}>+{mediaUrls.length - 1} more</span>
-                  )}
-                </div>
-              )}
+              {/* Media preview at top */}
+              {mediaUrls.length > 0 && (() => {
+                const url = mediaUrls[0];
+                const isVideo = url.match(/\.(mp4|webm|mov)$/i);
+                const isAudio = url.match(/\.(mp3|wav|ogg|webm|m4a)$/i) || url.includes("audio");
+                return (
+                  <div style={{ position: "relative" }}>
+                    {isVideo ? (
+                      <video src={url} controls style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
+                    ) : isAudio ? (
+                      <div style={{ padding: "16px", background: "var(--surface2)", display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 24 }}>🎙️</span>
+                        <audio src={url} controls style={{ flex: 1, height: 36 }} />
+                      </div>
+                    ) : (
+                      <img src={url} alt="Report media" style={{ width: "100%", height: 160, objectFit: "cover", display: "block" }} />
+                    )}
+                    {mediaUrls.length > 1 && (
+                      <span style={{
+                        position: "absolute", bottom: 8, right: 8,
+                        background: "rgba(0,0,0,0.7)", color: "#fff",
+                        padding: "3px 8px", borderRadius: 8, fontSize: 10, fontWeight: 600,
+                      }}>+{mediaUrls.length - 1} more</span>
+                    )}
+                  </div>
+                );
+              })()}
 
               <div style={{ padding: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -129,15 +135,17 @@ export default function HistoryPage() {
                           📍 {Number(a.latitude).toFixed(4)}, {Number(a.longitude).toFixed(4)}
                         </div>
                       )}
-                      {/* Show all media images in expanded view */}
+                      {/* Show all media in expanded view */}
                       {mediaUrls.length > 1 && (
-                        <div style={{ display: "flex", gap: 8, marginTop: 10, overflowX: "auto" }}>
-                          {mediaUrls.map((url, j) => (
-                            <img key={j} src={url} alt={`Media ${j + 1}`} style={{
-                              width: 100, height: 70, objectFit: "cover", borderRadius: 8,
-                              border: "1px solid var(--border)",
-                            }} />
-                          ))}
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                          {mediaUrls.map((url, j) => {
+                            if (url.match(/\.(mp4|webm|mov)$/i)) {
+                              return <video key={j} src={url} controls style={{ width: "100%", maxHeight: 140, borderRadius: 8, border: "1px solid var(--border)" }} />;
+                            } else if (url.match(/\.(mp3|wav|ogg|webm|m4a)$/i) || url.includes("audio")) {
+                              return <div key={j} style={{ padding: "8px 12px", background: "var(--surface2)", borderRadius: 8, border: "1px solid var(--border)" }}><audio src={url} controls style={{ width: "100%", height: 32 }} /></div>;
+                            }
+                            return <img key={j} src={url} alt={`Media ${j + 1}`} style={{ width: "100%", maxHeight: 140, objectFit: "cover", borderRadius: 8, border: "1px solid var(--border)" }} />;
+                          })}
                         </div>
                       )}
 

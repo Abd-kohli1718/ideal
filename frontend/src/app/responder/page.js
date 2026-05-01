@@ -301,13 +301,15 @@ export default function ResponderPage() {
 
                           {/* Media */}
                           {mediaUrls.length > 0 && (
-                            <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-                              {mediaUrls.map((url, j) => (
-                                <img key={j} src={url} alt="incident" style={{
-                                  width: 140, height: 95, objectFit: "cover",
-                                  borderRadius: 10, border: "1px solid var(--border)",
-                                }} />
-                              ))}
+                            <div style={{ marginBottom: 14 }}>
+                              {mediaUrls.map((url, j) => {
+                                if (url.match(/\.(mp4|webm|mov)$/i)) {
+                                  return <video key={j} src={url} controls style={{ width: "100%", maxHeight: 180, borderRadius: 10, border: "1px solid var(--border)", display: "block" }} />;
+                                } else if (url.match(/\.(mp3|wav|ogg|webm|m4a)$/i) || url.includes("audio")) {
+                                  return <div key={j} style={{ padding: "10px 14px", background: "var(--surface2)", borderRadius: 10, border: "1px solid var(--border)" }}><audio src={url} controls style={{ width: "100%", height: 36 }} /></div>;
+                                }
+                                return <img key={j} src={url} alt="incident" style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border)", display: "block" }} />;
+                              })}
                             </div>
                           )}
 

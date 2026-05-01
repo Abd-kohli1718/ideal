@@ -287,6 +287,14 @@ async function runTriage(alertId, message, type, latitude, longitude) {
       else rawText = `${rawText}\n\n(rules fallback applied)`;
     }
 
+    // 4. FINAL OVERRIDE: SOS button alerts are ALWAYS high severity
+    // SOS is a direct personal emergency — model predictions should never downgrade it
+    if (type === 'sos_button') {
+      normalized.severity = 'high';
+      if (!rawText) rawText = '[SOS Override: forced high severity]';
+      else rawText += '\n\n[SOS Override: forced high severity]';
+    }
+
     const final = {
       ...defaults,
       ...normalized,

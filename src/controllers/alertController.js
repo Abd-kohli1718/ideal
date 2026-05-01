@@ -169,8 +169,8 @@ async function acceptAlert(req, res) {
       return res.status(404).json({ success: false, error: 'Alert not found' });
     }
 
-    if (alert.status !== 'active') {
-      return res.status(400).json({ success: false, error: 'Alert is not active' });
+    if (alert.status !== 'active' && alert.status !== 'dispatched') {
+      return res.status(400).json({ success: false, error: 'Alert is not available for acceptance' });
     }
 
     const { error: uErr } = await supabase
@@ -208,6 +208,47 @@ async function acceptAlert(req, res) {
   } catch (e) {
     console.error('acceptAlert', e);
     return res.status(500).json({ success: false, error: 'Failed to accept alert' });
+  }
+}
+
+async function dispatchAlert(req, res) {
+  const { id } = req.params;
+  try {
+    const supabase = getServiceClient();
+    const { data: alert, error: aErr } = await supabase
+      .from('alerts')
+      .select('id, status')
+      .eq('id', id)
+      .single();
+
+    if (aErr || !alert) {
+      return res.status(404).json({ success: false, error: 'Alert not found' });
+    }
+
+    const { error: uErr } = await supabase
+      .from('alerts')
+      .update({ status: 'dispatched' })
+      .eq('id', id);
+
+    if (uErr) {
+      console.error('dispatchAlert update', uErr);
+      return res.status(500).json({ success: false, error: 'Failed to dispatch alert' });
+    }
+
+    const { data: full, error: fErr } = await supabase
+      .from('alerts')
+      .select('*, triage_results(*)')
+      .eq('id', id)
+      .single();
+
+    if (fErr) {
+      return res.json({ success: true, data: { id, status: 'dispatched' } });
+    }
+
+    return res.json({ success: true, data: mapAlertRow(full) });
+  } catch (e) {
+    console.error('dispatchAlert', e);
+    return res.status(500).json({ success: false, error: 'Failed to dispatch alert' });
   }
 }
 
@@ -273,5 +314,6 @@ module.exports = {
   listAlerts,
   getAlert,
   acceptAlert,
+  dispatchAlert,
   resolveAlert,
 };

@@ -47,7 +47,9 @@ export default function CentrePage() {
     try {
       const res = await apiFetch("/api/alerts");
       const alerts = res.data?.alerts || [];
-      setPosts(alerts.map((a) => {
+      setPosts(alerts
+        .filter((a) => a.type !== 'sos_button' && a.type !== 'audio_sos') // SOS alerts are personal — only shown in admin/responder dashboards
+        .map((a) => {
         let msg = a.message || "";
         let media_url = null;
         let media_type = "image";

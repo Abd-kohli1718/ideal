@@ -80,11 +80,12 @@ export default function ResponderPage() {
   };
 
   const filtered = alerts.filter(a => {
-    if (filter === "active") return a.status === "active" || a.status === "accepted";
+    // Responders only see admin-dispatched or already-accepted alerts
+    if (filter === "active") return a.status === "dispatched" || a.status === "accepted";
     return a.status === "resolved";
   });
 
-  const activeCount = alerts.filter(a => a.status === "active" || a.status === "accepted").length;
+  const activeCount = alerts.filter(a => a.status === "dispatched" || a.status === "accepted").length;
   const resolvedCount = alerts.filter(a => a.status === "resolved").length;
   const myAccepted = alerts.filter(a => a.status === "accepted").length;
 
@@ -277,10 +278,10 @@ export default function ResponderPage() {
                         </span>
                         <span style={{
                           padding: "3px 10px", borderRadius: 20, fontSize: 10, fontWeight: 600,
-                          background: a.status === "accepted" ? "rgba(255,170,40,0.1)" : a.status === "resolved" ? "rgba(76,209,127,0.1)" : "rgba(255,45,45,0.1)",
-                          color: a.status === "accepted" ? "#ffaa28" : a.status === "resolved" ? "#4cd17f" : "#ff6b6b",
+                          background: a.status === "dispatched" ? "rgba(91,141,239,0.1)" : a.status === "accepted" ? "rgba(255,170,40,0.1)" : a.status === "resolved" ? "rgba(76,209,127,0.1)" : "rgba(255,45,45,0.1)",
+                          color: a.status === "dispatched" ? "#5b8def" : a.status === "accepted" ? "#ffaa28" : a.status === "resolved" ? "#4cd17f" : "#ff6b6b",
                         }}>
-                          {a.status === "accepted" ? "In Progress" : a.status === "resolved" ? "Resolved" : "Pending"}
+                          {a.status === "dispatched" ? "Dispatched" : a.status === "accepted" ? "In Progress" : a.status === "resolved" ? "Resolved" : "Pending"}
                         </span>
                         <span style={{ fontSize: 10, color: "var(--muted)" }}>{timeAgo(a.created_at)}</span>
                       </div>
@@ -310,35 +311,50 @@ export default function ResponderPage() {
                             </div>
                           )}
 
-                          {/* Location */}
+                          {/* Location with embedded map */}
                           {a.latitude ? (
-                            <div style={{
-                              background: "var(--surface2)", borderRadius: 10, padding: "10px 14px",
-                              marginBottom: 14, display: "flex", alignItems: "center", gap: 8,
-                            }}>
-                              <span style={{ fontSize: 16 }}>📍</span>
-                              <div>
-                                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
-                                  {Number(a.latitude).toFixed(4)}, {Number(a.longitude).toFixed(4)}
-                                </div>
-                                <div style={{ fontSize: 10, color: "var(--muted)" }}>
-                                  Tap to open in maps
-                                </div>
+                            <div style={{ marginBottom: 14 }}>
+                              {/* Embedded Map */}
+                              <div style={{
+                                borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)",
+                                marginBottom: 10, height: 180,
+                              }}>
+                                <iframe
+                                  title="Incident Location"
+                                  width="100%"
+                                  height="180"
+                                  frameBorder="0"
+                                  scrolling="no"
+                                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(a.longitude)-0.008}%2C${Number(a.latitude)-0.005}%2C${Number(a.longitude)+0.008}%2C${Number(a.latitude)+0.005}&layer=mapnik&marker=${a.latitude}%2C${a.longitude}`}
+                                  style={{ display: "block" }}
+                                />
                               </div>
-                              <a
-                                href={`https://www.google.com/maps?q=${a.latitude},${a.longitude}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                onClick={e => e.stopPropagation()}
-                                style={{
-                                  marginLeft: "auto", padding: "6px 12px", borderRadius: 8,
-                                  background: "var(--surface)", border: "1px solid var(--border)",
-                                  color: "var(--text2)", fontSize: 11, fontWeight: 600,
-                                  textDecoration: "none",
-                                }}
-                              >
-                                Navigate →
-                              </a>
+                              <div style={{
+                                display: "flex", alignItems: "center", gap: 8,
+                                background: "var(--surface2)", borderRadius: 10, padding: "10px 14px",
+                              }}>
+                                <span style={{ fontSize: 16 }}>📍</span>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text)" }}>
+                                    {Number(a.latitude).toFixed(4)}, {Number(a.longitude).toFixed(4)}
+                                  </div>
+                                </div>
+                                <a
+                                  href={`https://www.google.com/maps/dir/?api=1&destination=${a.latitude},${a.longitude}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={e => e.stopPropagation()}
+                                  style={{
+                                    padding: "8px 14px", borderRadius: 10,
+                                    background: "linear-gradient(135deg, #5b8def, #3b5ec9)",
+                                    color: "#fff", fontSize: 11, fontWeight: 700,
+                                    textDecoration: "none", display: "flex", alignItems: "center", gap: 5,
+                                    boxShadow: "0 2px 8px rgba(91,141,239,0.3)",
+                                  }}
+                                >
+                                  🧭 Navigate
+                                </a>
+                              </div>
                             </div>
                           ) : (
                             <div style={{

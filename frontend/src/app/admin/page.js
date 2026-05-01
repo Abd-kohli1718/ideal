@@ -44,6 +44,7 @@ function SeverityChip({ severity }) {
 function StatusChip({ status }) {
   const map = {
     active: { color: "#ff6b6b", bg: "rgba(255,45,45,0.1)", label: "Active" },
+    dispatched: { color: "#5b8def", bg: "rgba(91,141,239,0.1)", label: "Dispatched" },
     accepted: { color: "#ffaa28", bg: "rgba(255,170,40,0.1)", label: "In Progress" },
     resolved: { color: "#4cd17f", bg: "rgba(76,209,127,0.1)", label: "Resolved" },
   };
@@ -118,15 +119,21 @@ export default function AdminPage() {
   const resolved = alerts.filter(a => a.status === "resolved").length;
   const critical = alerts.filter(a => (a.triage_result?.severity || a.severity) === "high").length;
 
-  const handleDispatch = (alertId) => {
-    const total = dispatchRes.ambulances + dispatchRes.fire + dispatchRes.police;
-    if (total === 0) {
-      toast.success("Incident processed without deploying resources");
-    } else {
-      toast.success(`Dispatched ${total} unit(s) to incident`);
+  const handleDispatch = async (alertId) => {
+    try {
+      await apiFetch(`/api/alerts/${alertId}/dispatch`, { method: "PATCH" });
+      const total = dispatchRes.ambulances + dispatchRes.fire + dispatchRes.police;
+      if (total === 0) {
+        toast.success("Alert dispatched to responders");
+      } else {
+        toast.success(`Dispatched ${total} unit(s) to responders`);
+      }
+      setExpandedId(null);
+      setDispatchRes({ ambulances: 0, fire: 0, police: 0 });
+      fetchAlerts();
+    } catch (err) {
+      toast.error(err.message || "Failed to dispatch");
     }
-    setExpandedId(null);
-    setDispatchRes({ ambulances: 0, fire: 0, police: 0 });
   };
 
   // Most upvoted alerts
@@ -393,6 +400,25 @@ export default function AdminPage() {
                                   <div style={{ marginBottom: 8 }}><strong>Location:</strong> {a.latitude ? `${Number(a.latitude).toFixed(4)}, ${Number(a.longitude).toFixed(4)}` : "Location off"}</div>
                                   <div><strong>AI Confidence:</strong> {a.triage_result ? "High (AI Triaged)" : "Pending review"}</div>
                                 </div>
+
+                                {/* Embedded Map in Verify Step */}
+                                {a.latitude && (
+                                  <div style={{
+                                    borderRadius: 12, overflow: "hidden", border: "1px solid var(--border)",
+                                    marginBottom: 12, height: 160,
+                                  }}>
+                                    <iframe
+                                      title="Incident Location"
+                                      width="100%"
+                                      height="160"
+                                      frameBorder="0"
+                                      scrolling="no"
+                                      src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(a.longitude)-0.008}%2C${Number(a.latitude)-0.005}%2C${Number(a.longitude)+0.008}%2C${Number(a.latitude)+0.005}&layer=mapnik&marker=${a.latitude}%2C${a.longitude}`}
+                                      style={{ display: "block" }}
+                                    />
+                                  </div>
+                                )}
+
                                 <button
                                   onClick={() => { setVerifiedIds(prev => new Set([...prev, a.id])); toast.success("Incident verified ✓"); }}
                                   style={{

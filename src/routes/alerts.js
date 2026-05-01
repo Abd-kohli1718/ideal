@@ -5,6 +5,7 @@ const {
   listAlerts,
   getAlert,
   acceptAlert,
+  dispatchAlert,
   resolveAlert,
 } = require('../controllers/alertController');
 const { verifySupabaseJwt, requireResponder } = require('../middleware/auth');
@@ -25,6 +26,7 @@ router.post('/', alertCreateLimiter, createAlert);
 router.get('/', listAlerts);
 router.get('/:id', getAlert);
 router.patch('/:id/accept', requireResponder, acceptAlert);
+router.patch('/:id/dispatch', requireResponder, dispatchAlert);
 router.patch('/:id/resolve', requireResponder, resolveAlert);
 
 module.exports = router;

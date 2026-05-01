@@ -72,10 +72,10 @@ export default function CreatePost({ open, onClose, onSubmit }) {
           onClick={(e) => e.stopPropagation()}
           style={{
             width: "100%", maxWidth: 480, margin: "0 auto",
-            background: "var(--card, #1a1a2e)", borderRadius: "20px 20px 0 0",
-            border: "1px solid var(--border, #2a2a3e)", borderBottom: "none",
+            background: "var(--card, #1a1a2e)", borderRadius: 20,
+            border: "1px solid var(--border, #2a2a3e)",
             display: "flex", flexDirection: "column",
-            maxHeight: "80vh",
+            maxHeight: "70vh", marginBottom: 70,
           }}
         >
           {/* Handle */}
@@ -235,10 +235,10 @@ export default function CreatePost({ open, onClose, onSubmit }) {
 
           {/* FIXED submit — always visible */}
           <div style={{
-            padding: "10px 16px",
-            paddingBottom: "max(14px, env(safe-area-inset-bottom, 14px))",
+            padding: "12px 16px 16px",
             borderTop: "1px solid var(--border, #2a2a3e)",
             background: "var(--card, #1a1a2e)",
+            borderRadius: "0 0 20px 20px",
           }}>
             <motion.button
               onClick={handleSubmit}

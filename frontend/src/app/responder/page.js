@@ -288,6 +288,20 @@ export default function ResponderPage() {
                     </div>
                   </div>
 
+                  {/* Media preview — always visible */}
+                  {mediaUrls.length > 0 && (
+                    <div style={{ marginTop: 12, borderRadius: 10, overflow: "hidden", border: "1px solid var(--border)" }}>
+                      {(() => {
+                        const url = mediaUrls[0];
+                        if (url.match(/\.(mp4|webm|mov)$/i)) {
+                          return <video src={url} controls style={{ width: "100%", maxHeight: 150, display: "block" }} />;
+                        } else if (url.match(/\.(mp3|wav|ogg|webm|m4a)$/i) || url.includes("audio")) {
+                          return <div style={{ padding: "10px 14px", background: "var(--surface2)" }}><audio src={url} controls style={{ width: "100%", height: 36 }} /></div>;
+                        }
+                        return <img src={url} alt="incident" style={{ width: "100%", maxHeight: 150, objectFit: "cover", display: "block" }} />;
+                      })()}
+                    </div>
+                  )}
                   {/* Expanded details */}
                   <AnimatePresence>
                     {isSelected && (

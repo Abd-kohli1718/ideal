@@ -29,6 +29,6 @@ router.get('/:id', getAlert);
 router.patch('/:id/accept', requireResponder, acceptAlert);
 router.patch('/:id/dispatch', requireResponder, dispatchAlert);
 router.patch('/:id/resolve', requireResponder, resolveAlert);
-router.delete('/:id', requireResponder, deleteAlert);
+router.delete('/:id', deleteAlert);
 
 module.exports = router;

@@ -84,6 +84,7 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [chatAlertId, setChatAlertId] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     try {
@@ -109,8 +110,9 @@ export default function AdminPage() {
   });
 
   const filtered = sorted.filter(a => {
-    if (!searchQuery) return true;
-    return a.message?.toLowerCase().includes(searchQuery.toLowerCase());
+    if (searchQuery && !a.message?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (statusFilter !== "all" && a.status !== statusFilter) return false;
+    return true;
   });
 
   const total = alerts.length;
@@ -270,6 +272,30 @@ export default function AdminPage() {
       {tab === "emergencies" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
+          {/* Status filter pills */}
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {[
+              { label: "All", value: "all", count: filtered.length },
+              { label: "⏳ Pending", value: "active", count: filtered.filter(a => a.status === "active").length },
+              { label: "🚀 Dispatched", value: "accepted", count: filtered.filter(a => a.status === "accepted").length },
+              { label: "✅ Resolved", value: "resolved", count: filtered.filter(a => a.status === "resolved").length },
+            ].map(s => (
+              <button
+                key={s.value}
+                onClick={() => setStatusFilter?.(prev => prev === s.value ? "all" : s.value)}
+                style={{
+                  padding: "6px 14px", borderRadius: 20, border: "none", cursor: "pointer",
+                  fontFamily: "inherit", fontSize: 11, fontWeight: 600,
+                  background: (statusFilter || "all") === s.value ? "rgba(91,141,239,0.15)" : "var(--surface2)",
+                  color: (statusFilter || "all") === s.value ? "#5b8def" : "var(--muted)",
+                  borderWidth: 1, borderStyle: "solid",
+                  borderColor: (statusFilter || "all") === s.value ? "rgba(91,141,239,0.3)" : "var(--border)",
+                }}
+              >
+                {s.label} <span style={{ opacity: 0.7 }}>({s.count})</span>
+              </button>
+            ))}
+          </div>
           {/* ---- SOS REPORTS SECTION ---- */}
           <div>
             <div style={{

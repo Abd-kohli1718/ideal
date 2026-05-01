@@ -16,13 +16,9 @@ function mapAlertRow(row) {
 }
 
 async function createAlert(req, res) {
-  const { type, message, latitude, longitude } = req.body || {};
-  if (!message) {
-    return res.status(400).json({
-      success: false,
-      error: 'message is required',
-    });
-  }
+  const { type, message: rawMessage, latitude, longitude } = req.body || {};
+  // Message is optional — default to 'Media alert' for media-only posts
+  const message = rawMessage || 'Media alert';
 
   // Location is optional — null means "Location off"
   const hasLocation = latitude !== undefined && latitude !== null && longitude !== undefined && longitude !== null;
